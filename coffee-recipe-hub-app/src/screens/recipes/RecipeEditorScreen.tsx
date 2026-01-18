@@ -1,7 +1,8 @@
-// レシピ作成・編集画面
+// レシピ作成・編集画面 - ミニマルデザイン
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore } from '../../store';
 import { Equipment, GrindSize, RecipeStep } from '../../types';
 
@@ -11,15 +12,6 @@ const equipmentOptions: { value: Equipment; label: string }[] = [
   { value: 'CHEMEX', label: 'ケメックス' },
   { value: 'AEROPRESS', label: 'エアロプレス' },
   { value: 'FRENCH_PRESS', label: 'フレンチプレス' },
-  { value: 'OTHER', label: 'その他' },
-];
-
-const grindSizeOptions: { value: GrindSize; label: string }[] = [
-  { value: 'FINE', label: '細挽き' },
-  { value: 'MEDIUM_FINE', label: '中細挽き' },
-  { value: 'MEDIUM', label: '中挽き' },
-  { value: 'MEDIUM_COARSE', label: '中粗挽き' },
-  { value: 'COARSE', label: '粗挽き' },
 ];
 
 export default function RecipeEditorScreen({ navigation }: any) {
@@ -35,7 +27,6 @@ export default function RecipeEditorScreen({ navigation }: any) {
     { order: 1, label: '蒸らし', timeSeconds: 0, waterMl: 30 },
     { order: 2, label: '1投目', timeSeconds: 30, waterMl: 70 },
     { order: 3, label: '2投目', timeSeconds: 60, waterMl: 80 },
-    { order: 4, label: '3投目', timeSeconds: 90, waterMl: 70 },
   ]);
 
   const addStep = () => {
@@ -62,89 +53,71 @@ export default function RecipeEditorScreen({ navigation }: any) {
     setSteps(newSteps);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!title.trim()) {
       Alert.alert('エラー', 'レシピ名を入力してください');
       return;
     }
 
-    try {
-      const response = await fetch('http://localhost:8080/api/v1/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          equipment,
-          coffeeGrams: parseFloat(coffeeGrams) || 15,
-          totalWaterMl: parseInt(totalWaterMl) || 250,
-          waterTemperature: parseInt(waterTemperature) || 92,
-          grindSize,
-          steps,
-          isPublic: false,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to create recipe');
-
-      const newRecipe = await response.json();
-      addRecipe(newRecipe);
-      Alert.alert('成功', 'レシピを作成しました', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-    } catch (error) {
-      // オフライン時
-      const localRecipe = {
-        id: Date.now().toString(),
-        userId: 'local',
-        title: title.trim(),
-        equipment,
-        coffeeGrams: parseFloat(coffeeGrams) || 15,
-        totalWaterMl: parseInt(totalWaterMl) || 250,
-        waterTemperature: parseInt(waterTemperature) || 92,
-        grindSize,
-        steps,
-        isPublic: false,
-        likeCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      addRecipe(localRecipe);
-      Alert.alert('成功', 'レシピを作成しました（オフライン）', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-    }
+    const localRecipe = {
+      id: Date.now().toString(),
+      userId: 'local',
+      title: title.trim(),
+      equipment,
+      coffeeGrams: parseFloat(coffeeGrams) || 15,
+      totalWaterMl: parseInt(totalWaterMl) || 250,
+      waterTemperature: parseInt(waterTemperature) || 92,
+      grindSize,
+      steps,
+      isPublic: false,
+      likeCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    addRecipe(localRecipe);
+    navigation.goBack();
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.form}>
-        <Text style={styles.label}>レシピ名 *</Text>
-        <TextInput
-          style={styles.input}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="例: 朝の定番レシピ"
-          placeholderTextColor="#999"
-        />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>レシピ名</Text>
+          <TextInput
+            style={styles.input}
+            value={title}
+            onChangeText={setTitle}
+            placeholder="朝の定番レシピ"
+            placeholderTextColor="#ccc"
+          />
+        </View>
 
-        <Text style={styles.label}>器具</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.optionRow}>
-            {equipmentOptions.map((opt) => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.optionButton, equipment === opt.value && styles.optionButtonActive]}
-                onPress={() => setEquipment(opt.value)}
-              >
-                <Text style={[styles.optionText, equipment === opt.value && styles.optionTextActive]}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>器具</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.optionRow}>
+              {equipmentOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.optionButton, equipment === opt.value && styles.optionButtonActive]}
+                  onPress={() => setEquipment(opt.value)}
+                >
+                  <Text style={[styles.optionText, equipment === opt.value && styles.optionTextActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
 
         <View style={styles.row}>
-          <View style={styles.halfInput}>
+          <View style={[styles.inputGroup, { flex: 1 }]}>
             <Text style={styles.label}>粉量 (g)</Text>
             <TextInput style={styles.input} value={coffeeGrams} onChangeText={setCoffeeGrams} keyboardType="numeric" />
           </View>
-          <View style={styles.halfInput}>
-            <Text style={styles.label}>総湯量 (ml)</Text>
+          <View style={[styles.inputGroup, { flex: 1, marginLeft: 16 }]}>
+            <Text style={styles.label}>湯量 (ml)</Text>
             <TextInput
               style={styles.input}
               value={totalWaterMl}
@@ -152,10 +125,7 @@ export default function RecipeEditorScreen({ navigation }: any) {
               keyboardType="numeric"
             />
           </View>
-        </View>
-
-        <View style={styles.row}>
-          <View style={styles.halfInput}>
+          <View style={[styles.inputGroup, { flex: 1, marginLeft: 16 }]}>
             <Text style={styles.label}>温度 (℃)</Text>
             <TextInput
               style={styles.input}
@@ -164,65 +134,43 @@ export default function RecipeEditorScreen({ navigation }: any) {
               keyboardType="numeric"
             />
           </View>
-          <View style={styles.halfInput}>
-            <Text style={styles.label}>挽き目</Text>
-            <View style={styles.grindPicker}>
-              {grindSizeOptions.slice(0, 3).map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[styles.grindButton, grindSize === opt.value && styles.grindButtonActive]}
-                  onPress={() => setGrindSize(opt.value)}
-                >
-                  <Text style={grindSize === opt.value ? styles.grindTextActive : styles.grindText}>
-                    {opt.label.substring(0, 2)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
         </View>
 
-        <Text style={[styles.label, { marginTop: 24 }]}>注湯ステップ</Text>
-        {steps.map((step, index) => (
-          <View key={index} style={styles.stepCard}>
-            <View style={styles.stepHeader}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>注湯ステップ</Text>
+          {steps.map((step, index) => (
+            <View key={index} style={styles.stepRow}>
               <TextInput
-                style={styles.stepLabel}
+                style={[styles.stepInput, { flex: 2 }]}
                 value={step.label}
                 onChangeText={(v) => updateStep(index, 'label', v)}
+                placeholder="ラベル"
+              />
+              <TextInput
+                style={[styles.stepInput, { flex: 1 }]}
+                value={step.timeSeconds.toString()}
+                onChangeText={(v) => updateStep(index, 'timeSeconds', parseInt(v) || 0)}
+                keyboardType="numeric"
+                placeholder="秒"
+              />
+              <TextInput
+                style={[styles.stepInput, { flex: 1 }]}
+                value={step.waterMl.toString()}
+                onChangeText={(v) => updateStep(index, 'waterMl', parseInt(v) || 0)}
+                keyboardType="numeric"
+                placeholder="ml"
               />
               {steps.length > 1 && (
-                <TouchableOpacity onPress={() => removeStep(index)}>
-                  <Text style={styles.removeStep}>✕</Text>
+                <TouchableOpacity onPress={() => removeStep(index)} style={styles.removeButton}>
+                  <Ionicons name="close" size={18} color="#ccc" />
                 </TouchableOpacity>
               )}
             </View>
-            <View style={styles.stepInputs}>
-              <View style={styles.stepInputGroup}>
-                <Text style={styles.stepInputLabel}>秒</Text>
-                <TextInput
-                  style={styles.stepInput}
-                  value={step.timeSeconds.toString()}
-                  onChangeText={(v) => updateStep(index, 'timeSeconds', parseInt(v) || 0)}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={styles.stepInputGroup}>
-                <Text style={styles.stepInputLabel}>ml</Text>
-                <TextInput
-                  style={styles.stepInput}
-                  value={step.waterMl.toString()}
-                  onChangeText={(v) => updateStep(index, 'waterMl', parseInt(v) || 0)}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-          </View>
-        ))}
-
-        <TouchableOpacity style={styles.addStepButton} onPress={addStep}>
-          <Text style={styles.addStepText}>+ ステップを追加</Text>
-        </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.addStepButton} onPress={addStep}>
+            <Text style={styles.addStepText}>+ ステップを追加</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>保存</Text>
@@ -238,146 +186,84 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   form: {
-    padding: 16,
+    padding: 24,
+  },
+  inputGroup: {
+    marginBottom: 24,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#212121',
+    fontSize: 12,
+    color: '#999',
     marginBottom: 8,
-    marginTop: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingVertical: 12,
     fontSize: 16,
-    color: '#212121',
-    backgroundColor: '#fafafa',
+    color: '#1a1a1a',
+  },
+  row: {
+    flexDirection: 'row',
   },
   optionRow: {
     flexDirection: 'row',
     gap: 8,
   },
   optionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#eee',
   },
   optionButtonActive: {
-    backgroundColor: '#977669',
-    borderColor: '#977669',
+    backgroundColor: '#1a1a1a',
+    borderColor: '#1a1a1a',
   },
   optionText: {
-    fontSize: 14,
-    color: '#757575',
+    fontSize: 13,
+    color: '#666',
   },
   optionTextActive: {
     color: '#fff',
-    fontWeight: '600',
   },
-  row: {
+  stepRow: {
     flexDirection: 'row',
-    gap: 16,
-  },
-  halfInput: {
-    flex: 1,
-  },
-  grindPicker: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  grindButton: {
-    flex: 1,
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: '#f5f5f5',
     alignItems: 'center',
-  },
-  grindButtonActive: {
-    backgroundColor: '#977669',
-  },
-  grindText: {
-    fontSize: 12,
-    color: '#757575',
-  },
-  grindTextActive: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  stepCard: {
-    backgroundColor: '#fafafa',
-    borderRadius: 12,
-    padding: 12,
+    gap: 8,
     marginBottom: 8,
-  },
-  stepHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  stepLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#212121',
-    flex: 1,
-  },
-  removeStep: {
-    fontSize: 18,
-    color: '#f44336',
-    padding: 4,
-  },
-  stepInputs: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  stepInputGroup: {
-    flex: 1,
-  },
-  stepInputLabel: {
-    fontSize: 12,
-    color: '#757575',
-    marginBottom: 4,
   },
   stepInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 6,
-    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingVertical: 8,
     fontSize: 14,
-    backgroundColor: '#fff',
+    color: '#1a1a1a',
+  },
+  removeButton: {
+    padding: 4,
   },
   addStepButton: {
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#977669',
-    borderStyle: 'dashed',
+    paddingVertical: 12,
     alignItems: 'center',
-    marginTop: 8,
   },
   addStepText: {
-    color: '#977669',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    color: '#999',
   },
   saveButton: {
-    backgroundColor: '#977669',
+    backgroundColor: '#1a1a1a',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 32,
-    marginBottom: 32,
+    marginTop: 16,
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

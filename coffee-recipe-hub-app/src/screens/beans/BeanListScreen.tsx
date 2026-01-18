@@ -1,7 +1,8 @@
-// 豆一覧画面
+// 豆一覧画面 - ミニマルデザイン
 
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useBeanStore } from '../../store';
 import { Bean } from '../../types';
 
@@ -9,14 +10,14 @@ export default function BeanListScreen({ navigation }: any) {
   const { beans } = useBeanStore();
 
   const renderBeanCard = ({ item }: { item: Bean }) => (
-    <TouchableOpacity style={styles.beanCard}>
-      <View style={styles.beanHeader}>
+    <TouchableOpacity style={styles.beanItem}>
+      <View style={styles.beanInfo}>
         <Text style={styles.beanName}>{item.name}</Text>
-        <View style={styles.stockBadge}>
-          <Text style={styles.stockText}>{item.stockGrams}g</Text>
-        </View>
+        <Text style={styles.beanMeta}>
+          {item.roasterName} · {item.origin}
+        </Text>
       </View>
-      <Text style={styles.roasterName}>{item.roasterName}</Text>
+      <Text style={styles.stock}>{item.stockGrams}g</Text>
     </TouchableOpacity>
   );
 
@@ -29,14 +30,18 @@ export default function BeanListScreen({ navigation }: any) {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🫘</Text>
             <Text style={styles.emptyText}>豆が登録されていません</Text>
-            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('BeanAdd')}>
-              <Text style={styles.addButtonText}>豆を追加</Text>
+            <TouchableOpacity style={styles.addLink} onPress={() => navigation.navigate('BeanAdd')}>
+              <Text style={styles.addLinkText}>追加する →</Text>
             </TouchableOpacity>
           </View>
         }
       />
+      {beans.length > 0 && (
+        <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('BeanAdd')}>
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -47,63 +52,59 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   listContent: {
-    padding: 16,
+    padding: 24,
   },
-  beanCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: '#fafafa',
-  },
-  beanHeader: {
+  beanItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#eee',
+  },
+  beanInfo: {
+    flex: 1,
   },
   beanName: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1,
-    color: '#212121',
+    fontSize: 16,
+    color: '#1a1a1a',
+    fontWeight: '400',
   },
-  stockBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    backgroundColor: '#4caf50',
-  },
-  stockText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  roasterName: {
-    fontSize: 14,
+  beanMeta: {
+    fontSize: 13,
+    color: '#999',
     marginTop: 4,
-    color: '#757575',
+  },
+  stock: {
+    fontSize: 14,
+    color: '#666',
   },
   emptyState: {
+    paddingTop: 80,
     alignItems: 'center',
-    paddingTop: 48,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
   },
   emptyText: {
-    fontSize: 16,
-    marginBottom: 20,
-    color: '#757575',
+    fontSize: 14,
+    color: '#ccc',
+    marginBottom: 16,
+  },
+  addLink: {
+    paddingVertical: 8,
+  },
+  addLinkText: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    textDecorationLine: 'underline',
   },
   addButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#977669',
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

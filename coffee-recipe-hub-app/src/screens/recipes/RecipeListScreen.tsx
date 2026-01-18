@@ -1,7 +1,8 @@
-// レシピ一覧画面
+// レシピ一覧画面 - ミニマルデザイン
 
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore } from '../../store';
 import { Recipe } from '../../types';
 
@@ -9,11 +10,14 @@ export default function RecipeListScreen({ navigation }: any) {
   const { recipes } = useRecipeStore();
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
-    <TouchableOpacity style={styles.recipeCard}>
-      <Text style={styles.recipeTitle}>{item.title}</Text>
-      <Text style={styles.params}>
-        {item.coffeeGrams}g / {item.totalWaterMl}ml
-      </Text>
+    <TouchableOpacity style={styles.recipeItem}>
+      <View style={styles.recipeInfo}>
+        <Text style={styles.recipeTitle}>{item.title}</Text>
+        <Text style={styles.recipeMeta}>
+          {item.coffeeGrams}g · {item.totalWaterMl}ml · {item.waterTemperature}℃
+        </Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color="#ccc" />
     </TouchableOpacity>
   );
 
@@ -26,14 +30,18 @@ export default function RecipeListScreen({ navigation }: any) {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📝</Text>
             <Text style={styles.emptyText}>レシピがありません</Text>
-            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('RecipeEditor')}>
-              <Text style={styles.addButtonText}>レシピを作成</Text>
+            <TouchableOpacity style={styles.addLink} onPress={() => navigation.navigate('RecipeEditor')}>
+              <Text style={styles.addLinkText}>作成する →</Text>
             </TouchableOpacity>
           </View>
         }
       />
+      {recipes.length > 0 && (
+        <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('RecipeEditor')}>
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -44,46 +52,55 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   listContent: {
-    padding: 16,
+    padding: 24,
   },
-  recipeCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: '#fafafa',
+  recipeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#eee',
+  },
+  recipeInfo: {
+    flex: 1,
   },
   recipeTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#212121',
+    fontSize: 16,
+    color: '#1a1a1a',
+    fontWeight: '400',
   },
-  params: {
-    fontSize: 14,
+  recipeMeta: {
+    fontSize: 13,
+    color: '#999',
     marginTop: 4,
-    color: '#757575',
   },
   emptyState: {
+    paddingTop: 80,
     alignItems: 'center',
-    paddingTop: 48,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
   },
   emptyText: {
-    fontSize: 16,
-    marginBottom: 20,
-    color: '#757575',
+    fontSize: 14,
+    color: '#ccc',
+    marginBottom: 16,
+  },
+  addLink: {
+    paddingVertical: 8,
+  },
+  addLinkText: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    textDecorationLine: 'underline',
   },
   addButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#977669',
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

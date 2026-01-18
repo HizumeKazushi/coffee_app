@@ -1,7 +1,7 @@
-// 抽出セッション画面（タイマー）
+// 抽出セッション画面 - ミニマルデザイン
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Vibration } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRecipeStore } from '../../store';
 
 export default function BrewingSessionScreen({ navigation }: any) {
@@ -46,26 +46,33 @@ export default function BrewingSessionScreen({ navigation }: any) {
       {!selectedRecipe ? (
         <View style={styles.noRecipe}>
           <Text style={styles.noRecipeText}>レシピを選択してください</Text>
-          <TouchableOpacity style={styles.selectButton} onPress={() => navigation.navigate('Recipes')}>
-            <Text style={styles.selectButtonText}>レシピを選ぶ</Text>
+          <TouchableOpacity style={styles.selectLink} onPress={() => navigation.navigate('Recipes')}>
+            <Text style={styles.selectLinkText}>レシピを選ぶ →</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <>
+          <View style={styles.recipeInfo}>
+            <Text style={styles.recipeName}>{selectedRecipe.title}</Text>
+            <Text style={styles.recipeParams}>
+              {selectedRecipe.coffeeGrams}g · {selectedRecipe.totalWaterMl}ml · {selectedRecipe.waterTemperature}℃
+            </Text>
+          </View>
+
           <View style={styles.timerContainer}>
             <Text style={styles.timer}>{formatTime(elapsedMs)}</Text>
           </View>
 
           <View style={styles.controls}>
-            <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-              <Text style={styles.resetButtonText}>リセット</Text>
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleReset}>
+              <Text style={styles.secondaryButtonText}>リセット</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.mainButton, { backgroundColor: isRunning ? '#ff9800' : '#4caf50' }]}
+              style={[styles.primaryButton, isRunning && styles.primaryButtonActive]}
               onPress={handleStartStop}
             >
-              <Text style={styles.mainButtonText}>{isRunning ? '一時停止' : 'スタート'}</Text>
+              <Text style={styles.primaryButtonText}>{isRunning ? '一時停止' : 'スタート'}</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -77,8 +84,8 @@ export default function BrewingSessionScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: '#fff',
+    padding: 24,
   },
   noRecipe: {
     flex: 1,
@@ -86,57 +93,73 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noRecipeText: {
-    fontSize: 18,
-    marginBottom: 20,
-    color: '#757575',
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 16,
   },
-  selectButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#977669',
+  selectLink: {
+    paddingVertical: 8,
   },
-  selectButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  selectLinkText: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    textDecorationLine: 'underline',
+  },
+  recipeInfo: {
+    alignItems: 'center',
+    paddingTop: 32,
+  },
+  recipeName: {
+    fontSize: 20,
+    fontWeight: '300',
+    color: '#1a1a1a',
+  },
+  recipeParams: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 8,
   },
   timerContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 48,
   },
   timer: {
-    fontSize: 72,
-    fontWeight: '700',
-    color: '#212121',
+    fontSize: 64,
+    fontWeight: '200',
+    color: '#1a1a1a',
+    letterSpacing: -2,
   },
   controls: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 'auto',
-    paddingBottom: 20,
     gap: 16,
+    paddingBottom: 32,
   },
-  resetButton: {
-    paddingVertical: 16,
+  secondaryButton: {
+    paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
-  resetButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#616161',
+  secondaryButtonText: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '400',
   },
-  mainButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-    alignItems: 'center',
+  primaryButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    backgroundColor: '#1a1a1a',
   },
-  mainButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
+  primaryButtonActive: {
+    backgroundColor: '#666',
+  },
+  primaryButtonText: {
+    fontSize: 15,
     color: '#fff',
+    fontWeight: '500',
   },
 });
