@@ -31,7 +31,7 @@ export default function BeanListScreen({ navigation }: any) {
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🫘</Text>
             <Text style={styles.emptyText}>豆が登録されていません</Text>
-            <TouchableOpacity style={styles.addButton}>
+            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('BeanAdd')}>
               <Text style={styles.addButtonText}>豆を追加</Text>
             </TouchableOpacity>
           </View>

@@ -28,7 +28,7 @@ export default function RecipeListScreen({ navigation }: any) {
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📝</Text>
             <Text style={styles.emptyText}>レシピがありません</Text>
-            <TouchableOpacity style={styles.addButton}>
+            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('RecipeEditor')}>
               <Text style={styles.addButtonText}>レシピを作成</Text>
             </TouchableOpacity>
           </View>
