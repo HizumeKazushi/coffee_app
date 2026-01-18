@@ -39,6 +39,7 @@ export interface RecipeStep {
 export interface Recipe {
   id: string;
   userId: string;
+  authorName?: string;
   title: string;
   equipment: Equipment;
   coffeeGrams: number;
@@ -46,6 +47,7 @@ export interface Recipe {
   waterTemperature: number;
   grindSize: GrindSize;
   steps: RecipeStep[];
+  tags?: string[];
   isPublic: boolean;
   likeCount: number;
   createdAt: string;

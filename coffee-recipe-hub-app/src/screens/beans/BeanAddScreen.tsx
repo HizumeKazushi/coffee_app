@@ -1,7 +1,16 @@
 // 豆追加画面 - ミニマルデザイン
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { useBeanStore } from '../../store';
 import { RoastLevel } from '../../types';
 
@@ -13,8 +22,10 @@ const roastLevels: { value: RoastLevel; label: string }[] = [
   { value: 'DARK', label: '深煎り' },
 ];
 
-export default function BeanAddScreen({ navigation }: any) {
-  const { addBean } = useBeanStore();
+export default function BeanAddScreen({ navigation, route }: any) {
+  const { addBean, updateBean, loading } = useBeanStore();
+  const editingBean = route.params?.bean;
+  const isEditing = !!editingBean;
 
   const [name, setName] = useState('');
   const [roasterName, setRoasterName] = useState('');
@@ -24,28 +35,46 @@ export default function BeanAddScreen({ navigation }: any) {
   const [roastDate, setRoastDate] = useState('');
   const [stockGrams, setStockGrams] = useState('');
 
+  React.useEffect(() => {
+    if (editingBean) {
+      navigation.setOptions({ title: '豆を編集' });
+      setName(editingBean.name);
+      setRoasterName(editingBean.roasterName);
+      setOrigin(editingBean.origin);
+      setRoastLevel(editingBean.roastLevel);
+      setProcess(editingBean.process);
+      setRoastDate(editingBean.roastDate);
+      setStockGrams(editingBean.stockGrams.toString());
+    }
+  }, [editingBean, navigation]);
+
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert('エラー', '豆の名前を入力してください');
       return;
     }
 
-    const localBean = {
-      id: Date.now().toString(),
-      userId: 'local',
-      name: name.trim(),
-      roasterName: roasterName.trim(),
-      origin: origin.trim(),
-      roastLevel,
-      process: process.trim(),
-      roastDate: roastDate.trim(),
-      stockGrams: parseInt(stockGrams) || 0,
-      flavorNotes: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    addBean(localBean);
-    navigation.goBack();
+    try {
+      const beanData = {
+        name: name.trim(),
+        roasterName: roasterName.trim(),
+        origin: origin.trim(),
+        roastLevel,
+        process: process.trim(),
+        roastDate: roastDate.trim(),
+        stockGrams: parseInt(stockGrams) || 0,
+        flavorNotes: [],
+      };
+
+      if (isEditing) {
+        await updateBean({ ...editingBean, ...beanData });
+      } else {
+        await addBean(beanData);
+      }
+      navigation.goBack();
+    } catch (e) {
+      Alert.alert('エラー', '豆の保存に失敗しました');
+    }
   };
 
   return (
@@ -136,8 +165,8 @@ export default function BeanAddScreen({ navigation }: any) {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>保存</Text>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>保存</Text>}
         </TouchableOpacity>
       </View>
     </ScrollView>

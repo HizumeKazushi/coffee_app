@@ -3,15 +3,24 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
+	"github.com/coffee-recipe-hub/api/database"
 	"github.com/coffee-recipe-hub/api/handlers"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	// .env ファイル読み込み（存在する場合）
+	// .env ファイル読み込み
 	_ = godotenv.Load()
+
+	// データベース接続
+	if err := database.Connect(); err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer database.Close()
 
 	// Ginルーター初期化
 	r := gin.Default()
@@ -27,6 +36,9 @@ func main() {
 		}
 		c.Next()
 	})
+
+	// 認証ミドルウェア
+	r.Use(AuthMiddleware())
 
 	// ヘルスチェック
 	r.GET("/health", handlers.HealthCheck)
@@ -48,6 +60,7 @@ func main() {
 		recipes := v1.Group("/recipes")
 		{
 			recipes.GET("", handlers.GetRecipes)
+			recipes.GET("/public", handlers.GetPublicRecipes) // 公開レシピ一覧
 			recipes.GET("/:id", handlers.GetRecipe)
 			recipes.POST("", handlers.CreateRecipe)
 			recipes.PUT("/:id", handlers.UpdateRecipe)
@@ -71,5 +84,40 @@ func main() {
 	log.Printf("🚀 Coffee Recipe Hub API starting on port %s", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+// AuthMiddleware JWTトークンからユーザーIDを抽出するミドルウェア
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.Next()
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.Next()
+			return
+		}
+
+		tokenString := parts[1]
+
+		// 署名検証なしでトークンをパース（開発用、本番では検証推奨）
+		token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
+		if err != nil {
+			log.Printf("Failed to parse token: %v", err)
+			c.Next()
+			return
+		}
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if sub, ok := claims["sub"].(string); ok {
+				c.Set("userID", sub)
+			}
+		}
+
+		c.Next()
 	}
 }

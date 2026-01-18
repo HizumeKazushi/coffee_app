@@ -1,4 +1,4 @@
-// 豆一覧画面 - ミニマルデザイン
+// 豆選択画面 - 抽出用
 
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
@@ -6,22 +6,31 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBeanStore } from '../../store';
 import { Bean } from '../../types';
 
-export default function BeanListScreen({ navigation }: any) {
-  const { beans, fetchBeans, loading } = useBeanStore();
+export default function BeanSelectScreen({ navigation }: any) {
+  const { beans, selectBean, fetchBeans } = useBeanStore();
 
   React.useEffect(() => {
     fetchBeans();
   }, [fetchBeans]);
 
-  const renderBeanCard = ({ item }: { item: Bean }) => (
-    <TouchableOpacity style={styles.beanItem} onPress={() => navigation.navigate('BeanAdd', { bean: item })}>
+  const handleSelect = (bean: Bean) => {
+    selectBean(bean);
+    navigation.navigate('BrewingSession');
+  };
+
+  const renderBeanItem = ({ item }: { item: Bean }) => (
+    <TouchableOpacity style={styles.beanItem} onPress={() => handleSelect(item)}>
       <View style={styles.beanInfo}>
         <Text style={styles.beanName}>{item.name}</Text>
         <Text style={styles.beanMeta}>
           {item.roasterName} · {item.origin}
         </Text>
+        <Text style={styles.beanRoast}>{item.roastLevel}</Text>
       </View>
-      <Text style={styles.stock}>{item.stockGrams}g</Text>
+      <View style={styles.stockContainer}>
+        <Text style={styles.stock}>{item.stockGrams}g</Text>
+        <Ionicons name="chevron-forward" size={18} color="#ccc" style={{ marginLeft: 8 }} />
+      </View>
     </TouchableOpacity>
   );
 
@@ -29,23 +38,21 @@ export default function BeanListScreen({ navigation }: any) {
     <View style={styles.container}>
       <FlatList
         data={beans}
-        renderItem={renderBeanCard}
+        renderItem={renderBeanItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>豆が登録されていません</Text>
-            <TouchableOpacity style={styles.addLink} onPress={() => navigation.navigate('BeanAdd')}>
-              <Text style={styles.addLinkText}>追加する →</Text>
+            <TouchableOpacity
+              style={styles.createLink}
+              onPress={() => navigation.navigate('Beans', { screen: 'BeanAdd' })}
+            >
+              <Text style={styles.createLinkText}>豆を登録する →</Text>
             </TouchableOpacity>
           </View>
         }
       />
-      {beans.length > 0 && (
-        <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('BeanAdd')}>
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -79,6 +86,15 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
   },
+  beanRoast: {
+    fontSize: 12,
+    color: '#ccc',
+    marginTop: 4,
+  },
+  stockContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   stock: {
     fontSize: 14,
     color: '#666',
@@ -92,23 +108,12 @@ const styles = StyleSheet.create({
     color: '#ccc',
     marginBottom: 16,
   },
-  addLink: {
+  createLink: {
     paddingVertical: 8,
   },
-  addLinkText: {
+  createLinkText: {
     fontSize: 14,
     color: '#1a1a1a',
     textDecorationLine: 'underline',
-  },
-  addButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#1a1a1a',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

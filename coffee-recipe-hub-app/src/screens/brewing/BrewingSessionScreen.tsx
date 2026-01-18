@@ -1,20 +1,20 @@
 // 抽出セッション画面 - ステップナビゲーション付き
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Vibration } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore, useBrewLogStore, useBeanStore } from '../../store';
-import { RecipeStep } from '../../types';
 
 export default function BrewingSessionScreen({ navigation }: any) {
   const { selectedRecipe, selectRecipe } = useRecipeStore();
   const { addBrewLog } = useBrewLogStore();
-  const { beans } = useBeanStore();
+  const { selectedBean, selectBean, fetchBeans } = useBeanStore();
 
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [hasVibrated, setHasVibrated] = useState<number[]>([]);
+  const [isFinishing, setIsFinishing] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const steps = selectedRecipe?.steps || [];
@@ -76,26 +76,28 @@ export default function BrewingSessionScreen({ navigation }: any) {
     setHasVibrated([]);
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    if (isFinishing) return; // 二度押し防止
+    setIsFinishing(true);
     setIsRunning(false);
     // 抽出ログを保存
-    if (selectedRecipe) {
+    if (selectedRecipe && selectedBean) {
       const log = {
-        id: Date.now().toString(),
-        userId: 'local',
         recipeId: selectedRecipe.id,
-        beanId: beans[0]?.id || '',
-        brewDate: new Date().toISOString(),
+        beanId: selectedBean.id,
         actualDuration: Math.floor(elapsedMs / 1000),
-        rating: 0,
+        rating: 3,
         tasteNotes: [],
         memo: '',
-        createdAt: new Date().toISOString(),
       };
-      addBrewLog(log);
+      await addBrewLog(log);
+      // 在庫が更新されたので豆一覧を再取得
+      await fetchBeans();
     }
     handleReset();
     selectRecipe(null);
+    selectBean(null);
+    setIsFinishing(false);
     navigation.navigate('Home');
   };
 
@@ -108,7 +110,7 @@ export default function BrewingSessionScreen({ navigation }: any) {
       <View style={styles.container}>
         <View style={styles.noRecipe}>
           <Text style={styles.noRecipeTitle}>抽出を始める</Text>
-          <Text style={styles.noRecipeText}>レシピを選択してください</Text>
+          <Text style={styles.noRecipeText}>レシピと豆を選択してください</Text>
           <TouchableOpacity style={styles.selectButton} onPress={() => navigation.navigate('RecipeSelect')}>
             <Text style={styles.selectButtonText}>レシピを選ぶ</Text>
           </TouchableOpacity>
@@ -121,6 +123,10 @@ export default function BrewingSessionScreen({ navigation }: any) {
     <View style={styles.container}>
       {/* レシピ情報 */}
       <View style={styles.recipeInfo}>
+        <View style={styles.beanInfo}>
+          <Ionicons name="leaf-outline" size={14} color="#666" style={{ marginRight: 4 }} />
+          <Text style={styles.beanName}>{selectedBean ? selectedBean.name : '豆未選択'}</Text>
+        </View>
         <Text style={styles.recipeName}>{selectedRecipe.title}</Text>
         <Text style={styles.recipeParams}>
           {selectedRecipe.coffeeGrams}g · {selectedRecipe.totalWaterMl}ml · {selectedRecipe.waterTemperature}℃
@@ -172,8 +178,12 @@ export default function BrewingSessionScreen({ navigation }: any) {
           <Ionicons name={isRunning ? 'pause' : 'play'} size={24} color="#fff" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleFinish}>
-          <Text style={styles.secondaryButtonText}>完了</Text>
+        <TouchableOpacity
+          style={[styles.secondaryButton, isFinishing && { opacity: 0.5 }]}
+          onPress={handleFinish}
+          disabled={isFinishing}
+        >
+          <Text style={styles.secondaryButtonText}>{isFinishing ? '保存中...' : '完了'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -216,6 +226,16 @@ const styles = StyleSheet.create({
   recipeInfo: {
     alignItems: 'center',
     paddingTop: 16,
+  },
+  beanInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  beanName: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
   },
   recipeName: {
     fontSize: 18,

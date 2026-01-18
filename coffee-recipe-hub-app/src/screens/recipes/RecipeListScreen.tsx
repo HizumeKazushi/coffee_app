@@ -7,10 +7,14 @@ import { useRecipeStore } from '../../store';
 import { Recipe } from '../../types';
 
 export default function RecipeListScreen({ navigation }: any) {
-  const { recipes } = useRecipeStore();
+  const { recipes, fetchRecipes } = useRecipeStore();
+
+  React.useEffect(() => {
+    fetchRecipes();
+  }, [fetchRecipes]);
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
-    <TouchableOpacity style={styles.recipeItem}>
+    <TouchableOpacity style={styles.recipeItem} onPress={() => navigation.navigate('RecipeEditor', { recipe: item })}>
       <View style={styles.recipeInfo}>
         <Text style={styles.recipeTitle}>{item.title}</Text>
         <Text style={styles.recipeMeta}>

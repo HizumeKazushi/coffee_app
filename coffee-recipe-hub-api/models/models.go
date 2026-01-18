@@ -17,12 +17,12 @@ const (
 type GrindSize string
 
 const (
-	GrindSizeExtraFine   GrindSize = "EXTRA_FINE"
-	GrindSizeFine        GrindSize = "FINE"
-	GrindSizeMediumFine  GrindSize = "MEDIUM_FINE"
-	GrindSizeMedium      GrindSize = "MEDIUM"
+	GrindSizeExtraFine    GrindSize = "EXTRA_FINE"
+	GrindSizeFine         GrindSize = "FINE"
+	GrindSizeMediumFine   GrindSize = "MEDIUM_FINE"
+	GrindSizeMedium       GrindSize = "MEDIUM"
 	GrindSizeMediumCoarse GrindSize = "MEDIUM_COARSE"
-	GrindSizeCoarse      GrindSize = "COARSE"
+	GrindSizeCoarse       GrindSize = "COARSE"
 )
 
 // Equipment 抽出器具
@@ -49,34 +49,35 @@ type User struct {
 
 // Bean コーヒー豆
 type Bean struct {
-	ID           string     `json:"id"`
-	UserID       string     `json:"userId"`
-	Name         string     `json:"name"`
-	RoasterName  string     `json:"roasterName"`
-	Origin       string     `json:"origin"`
-	RoastLevel   RoastLevel `json:"roastLevel"`
-	Process      string     `json:"process"`
-	RoastDate    string     `json:"roastDate"`
-	StockGrams   int        `json:"stockGrams"`
-	FlavorNotes  []string   `json:"flavorNotes"`
-	ImageURL     string     `json:"imageUrl,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
+	ID          string     `json:"id"`
+	UserID      string     `json:"userId"`
+	Name        string     `json:"name"`
+	RoasterName string     `json:"roasterName"`
+	Origin      string     `json:"origin"`
+	RoastLevel  RoastLevel `json:"roastLevel"`
+	Process     string     `json:"process"`
+	RoastDate   string     `json:"roastDate"`
+	StockGrams  int        `json:"stockGrams"`
+	FlavorNotes []string   `json:"flavorNotes"`
+	ImageURL    string     `json:"imageUrl,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
 }
 
 // RecipeStep レシピステップ
 type RecipeStep struct {
-	Order      int    `json:"order"`
-	Label      string `json:"label"`
-	TimeSeconds int   `json:"timeSeconds"`
-	WaterMl    int    `json:"waterMl"`
-	Notes      string `json:"notes,omitempty"`
+	Order       int    `json:"order"`
+	Label       string `json:"label"`
+	TimeSeconds int    `json:"timeSeconds"`
+	WaterMl     int    `json:"waterMl"`
+	Notes       string `json:"notes,omitempty"`
 }
 
 // Recipe レシピ
 type Recipe struct {
 	ID               string       `json:"id"`
 	UserID           string       `json:"userId"`
+	AuthorName       string       `json:"authorName,omitempty"`
 	Title            string       `json:"title"`
 	Equipment        Equipment    `json:"equipment"`
 	CoffeeGrams      float64      `json:"coffeeGrams"`
@@ -84,6 +85,7 @@ type Recipe struct {
 	WaterTemperature int          `json:"waterTemperature"`
 	GrindSize        GrindSize    `json:"grindSize"`
 	Steps            []RecipeStep `json:"steps"`
+	Tags             []string     `json:"tags"`
 	IsPublic         bool         `json:"isPublic"`
 	LikeCount        int          `json:"likeCount"`
 	CreatedAt        time.Time    `json:"createdAt"`
@@ -112,25 +114,27 @@ type BrewLog struct {
 
 // CreateBeanRequest 豆作成リクエスト
 type CreateBeanRequest struct {
-	Name         string     `json:"name" binding:"required"`
-	RoasterName  string     `json:"roasterName"`
-	Origin       string     `json:"origin"`
-	RoastLevel   RoastLevel `json:"roastLevel"`
-	Process      string     `json:"process"`
-	RoastDate    string     `json:"roastDate"`
-	StockGrams   int        `json:"stockGrams"`
-	FlavorNotes  []string   `json:"flavorNotes"`
+	Name        string     `json:"name" binding:"required"`
+	RoasterName string     `json:"roasterName"`
+	Origin      string     `json:"origin"`
+	RoastLevel  RoastLevel `json:"roastLevel"`
+	Process     string     `json:"process"`
+	RoastDate   string     `json:"roastDate"`
+	StockGrams  int        `json:"stockGrams"`
+	FlavorNotes []string   `json:"flavorNotes"`
 }
 
 // CreateRecipeRequest レシピ作成リクエスト
 type CreateRecipeRequest struct {
 	Title            string       `json:"title" binding:"required"`
+	AuthorName       string       `json:"authorName"`
 	Equipment        Equipment    `json:"equipment" binding:"required"`
 	CoffeeGrams      float64      `json:"coffeeGrams" binding:"required"`
 	TotalWaterMl     int          `json:"totalWaterMl" binding:"required"`
 	WaterTemperature int          `json:"waterTemperature"`
 	GrindSize        GrindSize    `json:"grindSize"`
 	Steps            []RecipeStep `json:"steps"`
+	Tags             []string     `json:"tags"`
 	IsPublic         bool         `json:"isPublic"`
 }
 

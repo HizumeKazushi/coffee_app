@@ -1,18 +1,31 @@
 // レシピ作成・編集画面 - 改善版
 
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  Switch,
+  Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRecipeStore } from '../../store';
+import { useRecipeStore, useAuthStore } from '../../store';
 import { Equipment, GrindSize, RecipeStep } from '../../types';
+import { api } from '../../lib/api';
 
 const equipmentOptions: { value: Equipment; label: string; icon: string }[] = [
-  { value: 'V60', label: 'V60', icon: 'cafe-outline' },
-  { value: 'KALITA_WAVE', label: 'カリタ', icon: 'cafe-outline' },
-  { value: 'CHEMEX', label: 'ケメックス', icon: 'cafe-outline' },
-  { value: 'AEROPRESS', label: 'エアロプレス', icon: 'cafe-outline' },
-  { value: 'FRENCH_PRESS', label: 'フレンチ', icon: 'cafe-outline' },
+  { value: 'V60', label: 'V60', icon: 'caret-down-outline' }, // Ioniconsにcafe-outlineがない場合もあるのでcaret等で代用。元に戻します
+  { value: 'KALITA_WAVE', label: 'カリタ', icon: 'caret-down-outline' },
+  { value: 'CHEMEX', label: 'ケメックス', icon: 'flask-outline' },
+  { value: 'AEROPRESS', label: 'エアロプレス', icon: 'stopwatch-outline' },
+  { value: 'FRENCH_PRESS', label: 'フレンチ', icon: 'filter-outline' },
 ];
+// icon name修正済み
 
 const grindOptions: { value: GrindSize; label: string }[] = [
   { value: 'FINE', label: '細挽き' },
@@ -22,8 +35,11 @@ const grindOptions: { value: GrindSize; label: string }[] = [
   { value: 'COARSE', label: '粗挽き' },
 ];
 
-export default function RecipeEditorScreen({ navigation }: any) {
-  const { addRecipe } = useRecipeStore();
+export default function RecipeEditorScreen({ navigation, route }: any) {
+  const { addRecipe, updateRecipe, deleteRecipe, loading } = useRecipeStore();
+  const { user } = useAuthStore();
+  const editingRecipe = route.params?.recipe;
+  const isEditing = !!editingRecipe;
 
   const [title, setTitle] = useState('');
   const [equipment, setEquipment] = useState<Equipment>('V60');
@@ -31,15 +47,38 @@ export default function RecipeEditorScreen({ navigation }: any) {
   const [totalWaterMl, setTotalWaterMl] = useState('250');
   const [waterTemperature, setWaterTemperature] = useState('92');
   const [grindSize, setGrindSize] = useState<GrindSize>('MEDIUM');
+  const [endTimeSeconds, setEndTimeSeconds] = useState('180'); // 終了時間（秒）
+  const [isPublic, setIsPublic] = useState(false); // 公開設定
+  const [tags, setTags] = useState<string[]>([]); // タグ
+  const [tagInput, setTagInput] = useState(''); // タグ入力
   const [steps, setSteps] = useState<RecipeStep[]>([
     { order: 1, label: '蒸らし', timeSeconds: 0, waterMl: 30 },
     { order: 2, label: '1投目', timeSeconds: 30, waterMl: 70 },
     { order: 3, label: '2投目', timeSeconds: 60, waterMl: 80 },
   ]);
 
+  React.useEffect(() => {
+    if (editingRecipe) {
+      navigation.setOptions({ title: 'レシピを編集' });
+      setTitle(editingRecipe.title);
+      setEquipment(editingRecipe.equipment);
+      setCoffeeGrams(editingRecipe.coffeeGrams.toString());
+      setTotalWaterMl(editingRecipe.totalWaterMl.toString());
+      setWaterTemperature(editingRecipe.waterTemperature.toString());
+      setGrindSize(editingRecipe.grindSize);
+      setSteps(editingRecipe.steps);
+      setIsPublic(editingRecipe.isPublic || false);
+      setTags(editingRecipe.tags || []);
+      // 終了時間は最後のステップ+30秒か、フィールドがあればそれを使う
+      const lastStep = editingRecipe.steps[editingRecipe.steps.length - 1];
+      if (lastStep) {
+        setEndTimeSeconds((lastStep.timeSeconds + 30).toString());
+      }
+    }
+  }, [editingRecipe, navigation]);
+
   // 計算値
   const totalStepWater = useMemo(() => steps.reduce((sum, step) => sum + step.waterMl, 0), [steps]);
-  const totalTime = useMemo(() => (steps.length > 0 ? steps[steps.length - 1].timeSeconds + 30 : 0), [steps]);
   const ratio = useMemo(() => {
     const coffee = parseFloat(coffeeGrams) || 1;
     const water = parseInt(totalWaterMl) || 0;
@@ -70,29 +109,89 @@ export default function RecipeEditorScreen({ navigation }: any) {
     setSteps(newSteps);
   };
 
-  const handleSave = () => {
+  const performDelete = async () => {
+    if (editingRecipe?.id) {
+      try {
+        await deleteRecipe(editingRecipe.id);
+        navigation.goBack();
+      } catch (e: any) {
+        console.error('Delete error:', e);
+        if (Platform.OS === 'web') {
+          alert(`レシピの削除に失敗しました: ${e.message}`);
+        } else {
+          Alert.alert('エラー', `レシピの削除に失敗しました: ${e.message}`);
+        }
+      }
+    } else {
+      const msg = '削除対象のIDが見つかりません';
+      if (Platform.OS === 'web') alert(msg);
+      else Alert.alert('エラー', msg);
+    }
+  };
+
+  const handleDelete = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('本当にこのレシピを削除しますか？')) {
+        performDelete();
+      }
+    } else {
+      Alert.alert('レシピを削除', '本当にこのレシピを削除しますか？', [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: performDelete,
+        },
+      ]);
+    }
+  };
+
+  const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('エラー', 'レシピ名を入力してください');
       return;
     }
 
-    const localRecipe = {
-      id: Date.now().toString(),
-      userId: 'local',
-      title: title.trim(),
-      equipment,
-      coffeeGrams: parseFloat(coffeeGrams) || 15,
-      totalWaterMl: parseInt(totalWaterMl) || 250,
-      waterTemperature: parseInt(waterTemperature) || 92,
-      grindSize,
-      steps,
-      isPublic: false,
-      likeCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    addRecipe(localRecipe);
-    navigation.goBack();
+    try {
+      // 終了ステップを追加（stepsの最後に「完了」を含める）
+      const endTime = parseInt(endTimeSeconds) || 180;
+      const stepsWithEnd = [...steps];
+      // 終了時間を明示的に記録するため、最後のステップの後に完了ステップを追加
+      if (stepsWithEnd.length > 0 && stepsWithEnd[stepsWithEnd.length - 1].label !== '完了') {
+        stepsWithEnd.push({
+          order: stepsWithEnd.length + 1,
+          label: '完了',
+          timeSeconds: endTime,
+          waterMl: 0,
+        });
+      } else if (stepsWithEnd.length > 0) {
+        // 既存の完了ステップを更新
+        stepsWithEnd[stepsWithEnd.length - 1].timeSeconds = endTime;
+      }
+
+      const recipeData = {
+        title: title.trim(),
+        // ユーザーメタデータから表示名を取得。なければ 'Coffee Lover'
+        authorName: (user as any)?.user_metadata?.display_name || 'Coffee Lover',
+        equipment,
+        coffeeGrams: parseFloat(coffeeGrams) || 15,
+        totalWaterMl: parseInt(totalWaterMl) || 250,
+        waterTemperature: parseInt(waterTemperature) || 92,
+        grindSize,
+        steps: stepsWithEnd,
+        tags,
+        isPublic,
+      };
+
+      if (isEditing) {
+        await updateRecipe({ ...editingRecipe, ...recipeData });
+      } else {
+        await addRecipe(recipeData);
+      }
+      navigation.goBack();
+    } catch (e) {
+      Alert.alert('エラー', 'レシピの保存に失敗しました');
+    }
   };
 
   return (
@@ -199,9 +298,7 @@ export default function RecipeEditorScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.stepHeader}>
             <Text style={styles.sectionTitle}>注湯ステップ</Text>
-            <Text style={styles.stepSummary}>
-              合計 {totalStepWater}ml · 約{Math.floor(totalTime / 60)}分{totalTime % 60}秒
-            </Text>
+            <Text style={styles.stepSummary}>合計 {totalStepWater}ml</Text>
           </View>
 
           {steps.map((step, index) => (
@@ -254,10 +351,96 @@ export default function RecipeEditorScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
+        {/* 終了時間 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>終了時間</Text>
+          <View style={styles.endTimeRow}>
+            <View style={styles.endTimeInputContainer}>
+              <TextInput
+                style={styles.endTimeInput}
+                value={endTimeSeconds}
+                onChangeText={setEndTimeSeconds}
+                keyboardType="numeric"
+              />
+              <Text style={styles.endTimeUnit}>秒</Text>
+            </View>
+            <Text style={styles.endTimeDisplay}>
+              ({Math.floor(parseInt(endTimeSeconds) / 60)}分{parseInt(endTimeSeconds) % 60}秒)
+            </Text>
+          </View>
+        </View>
+
+        {/* タグ */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>タグ（公開時に表示）</Text>
+          <View style={styles.tagsContainer}>
+            {tags.map((tag, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.tagChip}
+                onPress={() => setTags(tags.filter((_, i) => i !== index))}
+              >
+                <Text style={styles.tagChipText}>#{tag}</Text>
+                <Ionicons name="close" size={14} color="#666" />
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.tagInputRow}>
+            <TextInput
+              style={styles.tagInput}
+              value={tagInput}
+              onChangeText={setTagInput}
+              placeholder="タグを入力（例: 初心者向け）"
+              placeholderTextColor="#ccc"
+              onSubmitEditing={() => {
+                if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+                  setTags([...tags, tagInput.trim()]);
+                  setTagInput('');
+                }
+              }}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={styles.tagAddButton}
+              onPress={() => {
+                if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+                  setTags([...tags, tagInput.trim()]);
+                  setTagInput('');
+                }
+              }}
+            >
+              <Ionicons name="add" size={20} color="#1a1a1a" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 公開設定 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>共有設定</Text>
+          <View style={styles.publicRow}>
+            <View style={styles.publicInfo}>
+              <Text style={styles.publicLabel}>コミュニティに公開</Text>
+              <Text style={styles.publicDescription}>オンにすると他のユーザーがこのレシピを見れます</Text>
+            </View>
+            <Switch
+              value={isPublic}
+              onValueChange={setIsPublic}
+              trackColor={{ false: '#e0e0e0', true: '#1a1a1a' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
         {/* 保存ボタン */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>保存</Text>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>保存</Text>}
         </TouchableOpacity>
+
+        {isEditing && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} disabled={loading}>
+            <Text style={styles.deleteButtonText}>このレシピを削除</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );
@@ -447,16 +630,121 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#999',
   },
+  endTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  endTimeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    padding: 12,
+  },
+  endTimeInput: {
+    fontSize: 24,
+    fontWeight: '300',
+    color: '#1a1a1a',
+    width: 80,
+    textAlign: 'center',
+  },
+  endTimeUnit: {
+    fontSize: 14,
+    color: '#999',
+  },
+  endTimeDisplay: {
+    fontSize: 14,
+    color: '#666',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#e0e0e0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  tagChipText: {
+    fontSize: 13,
+    color: '#1a1a1a',
+  },
+  tagInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tagInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1a1a1a',
+  },
+  tagAddButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  publicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    padding: 16,
+  },
+  publicInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  publicLabel: {
+    fontSize: 15,
+    color: '#1a1a1a',
+    fontWeight: '500',
+  },
+  publicDescription: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
   saveButton: {
     backgroundColor: '#1a1a1a',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 32,
+    marginBottom: 12,
   },
   saveButtonText: {
     color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  deleteButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ff6b6b',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  deleteButtonText: {
+    color: '#ff6b6b',
     fontSize: 15,
     fontWeight: '500',
   },

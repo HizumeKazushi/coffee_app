@@ -1,19 +1,15 @@
 package handlers
 
 import (
+	"database/sql"
+	"encoding/json"
 	"net/http"
 	"time"
 
+	"github.com/coffee-recipe-hub/api/database"
 	"github.com/coffee-recipe-hub/api/models"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-)
-
-// インメモリデータストア（開発用）
-var (
-	beans    = make(map[string]models.Bean)
-	recipes  = make(map[string]models.Recipe)
-	brewLogs = make(map[string]models.BrewLog)
+	"github.com/lib/pq"
 )
 
 // HealthCheck ヘルスチェック
@@ -29,22 +25,81 @@ func HealthCheck(c *gin.Context) {
 // GetBeans 豆一覧取得
 func GetBeans(c *gin.Context) {
 	userID := c.GetString("userID")
-	var userBeans []models.Bean
-	for _, bean := range beans {
-		if bean.UserID == userID || userID == "" {
-			userBeans = append(userBeans, bean)
-		}
+
+	var rows *sql.Rows
+	var err error
+
+	if userID == "" {
+		rows, err = database.DB.Query(`
+			SELECT id, user_id, name, roaster_name, origin, roast_level, process, 
+			       roast_date, stock_grams, flavor_notes, created_at, updated_at
+			FROM beans ORDER BY created_at DESC
+		`)
+	} else {
+		rows, err = database.DB.Query(`
+			SELECT id, user_id, name, roaster_name, origin, roast_level, process,
+			       roast_date, stock_grams, flavor_notes, created_at, updated_at
+			FROM beans WHERE user_id = $1 ORDER BY created_at DESC
+		`, userID)
 	}
-	c.JSON(http.StatusOK, userBeans)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var beans []models.Bean
+	for rows.Next() {
+		var bean models.Bean
+		var roastDate sql.NullTime
+		err := rows.Scan(
+			&bean.ID, &bean.UserID, &bean.Name, &bean.RoasterName, &bean.Origin,
+			&bean.RoastLevel, &bean.Process, &roastDate, &bean.StockGrams,
+			pq.Array(&bean.FlavorNotes), &bean.CreatedAt, &bean.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		if roastDate.Valid {
+			bean.RoastDate = roastDate.Time.Format("2006-01-02")
+		}
+		beans = append(beans, bean)
+	}
+
+	if beans == nil {
+		beans = []models.Bean{}
+	}
+	c.JSON(http.StatusOK, beans)
 }
 
 // GetBean 豆詳細取得
 func GetBean(c *gin.Context) {
 	id := c.Param("id")
-	bean, exists := beans[id]
-	if !exists {
+
+	var bean models.Bean
+	var roastDate sql.NullTime
+	err := database.DB.QueryRow(`
+		SELECT id, user_id, name, roaster_name, origin, roast_level, process,
+		       roast_date, stock_grams, flavor_notes, created_at, updated_at
+		FROM beans WHERE id = $1
+	`, id).Scan(
+		&bean.ID, &bean.UserID, &bean.Name, &bean.RoasterName, &bean.Origin,
+		&bean.RoastLevel, &bean.Process, &roastDate, &bean.StockGrams,
+		pq.Array(&bean.FlavorNotes), &bean.CreatedAt, &bean.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Bean not found"})
 		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if roastDate.Valid {
+		bean.RoastDate = roastDate.Time.Format("2006-01-02")
 	}
 	c.JSON(http.StatusOK, bean)
 }
@@ -57,33 +112,43 @@ func CreateBean(c *gin.Context) {
 		return
 	}
 
-	bean := models.Bean{
-		ID:          uuid.New().String(),
-		UserID:      c.GetString("userID"),
-		Name:        req.Name,
-		RoasterName: req.RoasterName,
-		Origin:      req.Origin,
-		RoastLevel:  req.RoastLevel,
-		Process:     req.Process,
-		RoastDate:   req.RoastDate,
-		StockGrams:  req.StockGrams,
-		FlavorNotes: req.FlavorNotes,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+	userID := c.GetString("userID")
+	if userID == "" {
+		userID = "00000000-0000-0000-0000-000000000000" // デフォルトユーザー（開発用）
 	}
 
-	beans[bean.ID] = bean
+	var bean models.Bean
+	var roastDate sql.NullTime
+	if req.RoastDate != "" {
+		t, _ := time.Parse("2006-01-02", req.RoastDate)
+		roastDate = sql.NullTime{Time: t, Valid: true}
+	}
+
+	err := database.DB.QueryRow(`
+		INSERT INTO beans (user_id, name, roaster_name, origin, roast_level, process, roast_date, stock_grams, flavor_notes)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id, user_id, name, roaster_name, origin, roast_level, process, roast_date, stock_grams, flavor_notes, created_at, updated_at
+	`, userID, req.Name, req.RoasterName, req.Origin, req.RoastLevel, req.Process,
+		roastDate, req.StockGrams, pq.Array(req.FlavorNotes)).Scan(
+		&bean.ID, &bean.UserID, &bean.Name, &bean.RoasterName, &bean.Origin,
+		&bean.RoastLevel, &bean.Process, &roastDate, &bean.StockGrams,
+		pq.Array(&bean.FlavorNotes), &bean.CreatedAt, &bean.UpdatedAt,
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if roastDate.Valid {
+		bean.RoastDate = roastDate.Time.Format("2006-01-02")
+	}
 	c.JSON(http.StatusCreated, bean)
 }
 
 // UpdateBean 豆更新
 func UpdateBean(c *gin.Context) {
 	id := c.Param("id")
-	bean, exists := beans[id]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Bean not found"})
-		return
-	}
 
 	var req models.CreateBeanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -91,28 +156,49 @@ func UpdateBean(c *gin.Context) {
 		return
 	}
 
-	bean.Name = req.Name
-	bean.RoasterName = req.RoasterName
-	bean.Origin = req.Origin
-	bean.RoastLevel = req.RoastLevel
-	bean.Process = req.Process
-	bean.RoastDate = req.RoastDate
-	bean.StockGrams = req.StockGrams
-	bean.FlavorNotes = req.FlavorNotes
-	bean.UpdatedAt = time.Now()
+	var roastDate sql.NullTime
+	if req.RoastDate != "" {
+		t, _ := time.Parse("2006-01-02", req.RoastDate)
+		roastDate = sql.NullTime{Time: t, Valid: true}
+	}
 
-	beans[id] = bean
-	c.JSON(http.StatusOK, bean)
+	result, err := database.DB.Exec(`
+		UPDATE beans SET name=$1, roaster_name=$2, origin=$3, roast_level=$4, 
+		       process=$5, roast_date=$6, stock_grams=$7, flavor_notes=$8, updated_at=NOW()
+		WHERE id=$9
+	`, req.Name, req.RoasterName, req.Origin, req.RoastLevel, req.Process,
+		roastDate, req.StockGrams, pq.Array(req.FlavorNotes), id)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Bean not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Bean updated"})
 }
 
 // DeleteBean 豆削除
 func DeleteBean(c *gin.Context) {
 	id := c.Param("id")
-	if _, exists := beans[id]; !exists {
+
+	result, err := database.DB.Exec("DELETE FROM beans WHERE id=$1", id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Bean not found"})
 		return
 	}
-	delete(beans, id)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Bean deleted"})
 }
 
@@ -121,23 +207,117 @@ func DeleteBean(c *gin.Context) {
 // GetRecipes レシピ一覧取得
 func GetRecipes(c *gin.Context) {
 	userID := c.GetString("userID")
-	var userRecipes []models.Recipe
-	for _, recipe := range recipes {
-		if recipe.UserID == userID || userID == "" {
-			userRecipes = append(userRecipes, recipe)
-		}
+
+	var rows *sql.Rows
+	var err error
+
+	if userID == "" {
+		rows, err = database.DB.Query(`
+			SELECT id, user_id, title, COALESCE(author_name, ''), equipment, coffee_grams, total_water_ml, 
+			       water_temperature, grind_size, steps, COALESCE(tags, '{}'), is_public, like_count, created_at, updated_at
+			FROM recipes ORDER BY created_at DESC
+		`)
+	} else {
+		rows, err = database.DB.Query(`
+			SELECT id, user_id, title, COALESCE(author_name, ''), equipment, coffee_grams, total_water_ml,
+			       water_temperature, grind_size, steps, COALESCE(tags, '{}'), is_public, like_count, created_at, updated_at
+			FROM recipes WHERE user_id = $1 OR is_public = true ORDER BY created_at DESC
+		`, userID)
 	}
-	c.JSON(http.StatusOK, userRecipes)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var recipes []models.Recipe
+	for rows.Next() {
+		var recipe models.Recipe
+		var stepsJSON []byte
+		err := rows.Scan(
+			&recipe.ID, &recipe.UserID, &recipe.Title, &recipe.AuthorName,
+			&recipe.Equipment, &recipe.CoffeeGrams, &recipe.TotalWaterMl, &recipe.WaterTemperature,
+			&recipe.GrindSize, &stepsJSON, pq.Array(&recipe.Tags), &recipe.IsPublic,
+			&recipe.LikeCount, &recipe.CreatedAt, &recipe.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		json.Unmarshal(stepsJSON, &recipe.Steps)
+		recipes = append(recipes, recipe)
+	}
+
+	if recipes == nil {
+		recipes = []models.Recipe{}
+	}
+	c.JSON(http.StatusOK, recipes)
+}
+
+// GetPublicRecipes 公開レシピ一覧取得（コミュニティ用）
+func GetPublicRecipes(c *gin.Context) {
+	rows, err := database.DB.Query(`
+		SELECT id, user_id, title, COALESCE(author_name, ''), equipment, coffee_grams, total_water_ml,
+		       water_temperature, grind_size, steps, COALESCE(tags, '{}'), is_public, like_count, created_at, updated_at
+		FROM recipes WHERE is_public = true ORDER BY like_count DESC, created_at DESC
+	`)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var recipes []models.Recipe
+	for rows.Next() {
+		var recipe models.Recipe
+		var stepsJSON []byte
+		err := rows.Scan(
+			&recipe.ID, &recipe.UserID, &recipe.Title, &recipe.AuthorName,
+			&recipe.Equipment, &recipe.CoffeeGrams, &recipe.TotalWaterMl, &recipe.WaterTemperature,
+			&recipe.GrindSize, &stepsJSON, pq.Array(&recipe.Tags), &recipe.IsPublic,
+			&recipe.LikeCount, &recipe.CreatedAt, &recipe.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		json.Unmarshal(stepsJSON, &recipe.Steps)
+		recipes = append(recipes, recipe)
+	}
+
+	if recipes == nil {
+		recipes = []models.Recipe{}
+	}
+	c.JSON(http.StatusOK, recipes)
 }
 
 // GetRecipe レシピ詳細取得
 func GetRecipe(c *gin.Context) {
 	id := c.Param("id")
-	recipe, exists := recipes[id]
-	if !exists {
+
+	var recipe models.Recipe
+	var stepsJSON []byte
+	err := database.DB.QueryRow(`
+		SELECT id, user_id, title, COALESCE(author_name, ''), equipment, coffee_grams, total_water_ml,
+		       water_temperature, grind_size, steps, COALESCE(tags, '{}'), is_public, like_count, created_at, updated_at
+		FROM recipes WHERE id = $1
+	`, id).Scan(
+		&recipe.ID, &recipe.UserID, &recipe.Title, &recipe.AuthorName,
+		&recipe.Equipment, &recipe.CoffeeGrams, &recipe.TotalWaterMl, &recipe.WaterTemperature,
+		&recipe.GrindSize, &stepsJSON, pq.Array(&recipe.Tags), &recipe.IsPublic,
+		&recipe.LikeCount, &recipe.CreatedAt, &recipe.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe not found"})
 		return
 	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	json.Unmarshal(stepsJSON, &recipe.Steps)
 	c.JSON(http.StatusOK, recipe)
 }
 
@@ -149,34 +329,39 @@ func CreateRecipe(c *gin.Context) {
 		return
 	}
 
-	recipe := models.Recipe{
-		ID:               uuid.New().String(),
-		UserID:           c.GetString("userID"),
-		Title:            req.Title,
-		Equipment:        req.Equipment,
-		CoffeeGrams:      req.CoffeeGrams,
-		TotalWaterMl:     req.TotalWaterMl,
-		WaterTemperature: req.WaterTemperature,
-		GrindSize:        req.GrindSize,
-		Steps:            req.Steps,
-		IsPublic:         req.IsPublic,
-		LikeCount:        0,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+	userID := c.GetString("userID")
+	if userID == "" {
+		userID = "00000000-0000-0000-0000-000000000000"
 	}
 
-	recipes[recipe.ID] = recipe
+	stepsJSON, _ := json.Marshal(req.Steps)
+
+	var recipe models.Recipe
+	var stepsBytes []byte
+	err := database.DB.QueryRow(`
+		INSERT INTO recipes (user_id, title, author_name, equipment, coffee_grams, total_water_ml, water_temperature, grind_size, steps, tags, is_public)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		RETURNING id, user_id, title, author_name, equipment, coffee_grams, total_water_ml, water_temperature, grind_size, steps, tags, is_public, like_count, created_at, updated_at
+	`, userID, req.Title, req.AuthorName, req.Equipment, req.CoffeeGrams, req.TotalWaterMl,
+		req.WaterTemperature, req.GrindSize, stepsJSON, pq.Array(req.Tags), req.IsPublic).Scan(
+		&recipe.ID, &recipe.UserID, &recipe.Title, &recipe.AuthorName, &recipe.Equipment,
+		&recipe.CoffeeGrams, &recipe.TotalWaterMl, &recipe.WaterTemperature,
+		&recipe.GrindSize, &stepsBytes, pq.Array(&recipe.Tags), &recipe.IsPublic, &recipe.LikeCount,
+		&recipe.CreatedAt, &recipe.UpdatedAt,
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	json.Unmarshal(stepsBytes, &recipe.Steps)
 	c.JSON(http.StatusCreated, recipe)
 }
 
 // UpdateRecipe レシピ更新
 func UpdateRecipe(c *gin.Context) {
 	id := c.Param("id")
-	recipe, exists := recipes[id]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe not found"})
-		return
-	}
 
 	var req models.CreateRecipeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -184,28 +369,45 @@ func UpdateRecipe(c *gin.Context) {
 		return
 	}
 
-	recipe.Title = req.Title
-	recipe.Equipment = req.Equipment
-	recipe.CoffeeGrams = req.CoffeeGrams
-	recipe.TotalWaterMl = req.TotalWaterMl
-	recipe.WaterTemperature = req.WaterTemperature
-	recipe.GrindSize = req.GrindSize
-	recipe.Steps = req.Steps
-	recipe.IsPublic = req.IsPublic
-	recipe.UpdatedAt = time.Now()
+	stepsJSON, _ := json.Marshal(req.Steps)
 
-	recipes[id] = recipe
-	c.JSON(http.StatusOK, recipe)
+	result, err := database.DB.Exec(`
+		UPDATE recipes SET title=$1, author_name=$2, equipment=$3, coffee_grams=$4, total_water_ml=$5,
+		       water_temperature=$6, grind_size=$7, steps=$8, tags=$9, is_public=$10, updated_at=NOW()
+		WHERE id=$11
+	`, req.Title, req.AuthorName, req.Equipment, req.CoffeeGrams, req.TotalWaterMl,
+		req.WaterTemperature, req.GrindSize, stepsJSON, pq.Array(req.Tags), req.IsPublic, id)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Recipe updated"})
 }
 
 // DeleteRecipe レシピ削除
 func DeleteRecipe(c *gin.Context) {
 	id := c.Param("id")
-	if _, exists := recipes[id]; !exists {
+
+	result, err := database.DB.Exec("DELETE FROM recipes WHERE id=$1", id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Recipe not found"})
 		return
 	}
-	delete(recipes, id)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Recipe deleted"})
 }
 
@@ -214,13 +416,55 @@ func DeleteRecipe(c *gin.Context) {
 // GetBrewLogs 抽出ログ一覧取得
 func GetBrewLogs(c *gin.Context) {
 	userID := c.GetString("userID")
-	var userLogs []models.BrewLog
-	for _, log := range brewLogs {
-		if log.UserID == userID || userID == "" {
-			userLogs = append(userLogs, log)
-		}
+
+	var rows *sql.Rows
+	var err error
+
+	if userID == "" {
+		rows, err = database.DB.Query(`
+			SELECT id, user_id, recipe_id, bean_id, brew_date, actual_duration,
+			       rating, taste_notes, memo, created_at
+			FROM brew_logs ORDER BY brew_date DESC
+		`)
+	} else {
+		rows, err = database.DB.Query(`
+			SELECT id, user_id, recipe_id, bean_id, brew_date, actual_duration,
+			       rating, taste_notes, memo, created_at
+			FROM brew_logs WHERE user_id = $1 ORDER BY brew_date DESC
+		`, userID)
 	}
-	c.JSON(http.StatusOK, userLogs)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var logs []models.BrewLog
+	for rows.Next() {
+		var log models.BrewLog
+		var recipeID, beanID sql.NullString
+		err := rows.Scan(
+			&log.ID, &log.UserID, &recipeID, &beanID, &log.BrewDate,
+			&log.ActualDuration, &log.Rating, pq.Array(&log.TasteNotes),
+			&log.Memo, &log.CreatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		if recipeID.Valid {
+			log.RecipeID = recipeID.String
+		}
+		if beanID.Valid {
+			log.BeanID = beanID.String
+		}
+		logs = append(logs, log)
+	}
+
+	if logs == nil {
+		logs = []models.BrewLog{}
+	}
+	c.JSON(http.StatusOK, logs)
 }
 
 // CreateBrewLog 抽出ログ作成
@@ -231,19 +475,77 @@ func CreateBrewLog(c *gin.Context) {
 		return
 	}
 
-	log := models.BrewLog{
-		ID:             uuid.New().String(),
-		UserID:         c.GetString("userID"),
-		RecipeID:       req.RecipeID,
-		BeanID:         req.BeanID,
-		BrewDate:       time.Now(),
-		ActualDuration: req.ActualDuration,
-		Rating:         req.Rating,
-		TasteNotes:     req.TasteNotes,
-		Memo:           req.Memo,
-		CreatedAt:      time.Now(),
+	userID := c.GetString("userID")
+	if userID == "" {
+		userID = "00000000-0000-0000-0000-000000000000"
 	}
 
-	brewLogs[log.ID] = log
+	var recipeID, beanID sql.NullString
+	if req.RecipeID != "" {
+		recipeID = sql.NullString{String: req.RecipeID, Valid: true}
+	}
+	if req.BeanID != "" {
+		beanID = sql.NullString{String: req.BeanID, Valid: true}
+	}
+
+	// トランザクション開始
+	tx, err := database.DB.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+	defer tx.Rollback()
+
+	var log models.BrewLog
+	var retRecipeID, retBeanID sql.NullString
+	err = tx.QueryRow(`
+		INSERT INTO brew_logs (user_id, recipe_id, bean_id, actual_duration, rating, taste_notes, memo)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, user_id, recipe_id, bean_id, brew_date, actual_duration, rating, taste_notes, memo, created_at
+	`, userID, recipeID, beanID, req.ActualDuration, req.Rating,
+		pq.Array(req.TasteNotes), req.Memo).Scan(
+		&log.ID, &log.UserID, &retRecipeID, &retBeanID, &log.BrewDate,
+		&log.ActualDuration, &log.Rating, pq.Array(&log.TasteNotes),
+		&log.Memo, &log.CreatedAt,
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if retRecipeID.Valid {
+		log.RecipeID = retRecipeID.String
+	}
+	if retBeanID.Valid {
+		log.BeanID = retBeanID.String
+	}
+
+	// 在庫を減らす処理
+	if req.RecipeID != "" && req.BeanID != "" {
+		var coffeeGrams float64
+		err = tx.QueryRow("SELECT coffee_grams FROM recipes WHERE id = $1", req.RecipeID).Scan(&coffeeGrams)
+		if err == nil {
+			// レシピが見つかった場合のみ在庫を減らす
+			_, err = tx.Exec(`
+				UPDATE beans 
+				SET stock_grams = GREATEST(stock_grams - $1, 0), updated_at = NOW() 
+				WHERE id = $2
+			`, coffeeGrams, req.BeanID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update bean stock"})
+				return
+			}
+		} else if err != sql.ErrNoRows {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch recipe"})
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+
 	c.JSON(http.StatusCreated, log)
 }

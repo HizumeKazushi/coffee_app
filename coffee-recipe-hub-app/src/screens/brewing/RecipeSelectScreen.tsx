@@ -7,11 +7,15 @@ import { useRecipeStore } from '../../store';
 import { Recipe } from '../../types';
 
 export default function RecipeSelectScreen({ navigation }: any) {
-  const { recipes, selectRecipe } = useRecipeStore();
+  const { recipes, selectRecipe, fetchRecipes } = useRecipeStore();
+
+  React.useEffect(() => {
+    fetchRecipes();
+  }, [fetchRecipes]);
 
   const handleSelect = (recipe: Recipe) => {
     selectRecipe(recipe);
-    navigation.navigate('BrewingSession');
+    navigation.navigate('BeanSelect');
   };
 
   const renderRecipeItem = ({ item }: { item: Recipe }) => (

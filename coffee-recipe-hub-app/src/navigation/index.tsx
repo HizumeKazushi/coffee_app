@@ -19,8 +19,11 @@ import BeanAddScreen from '../screens/beans/BeanAddScreen';
 import RecipeListScreen from '../screens/recipes/RecipeListScreen';
 import RecipeEditorScreen from '../screens/recipes/RecipeEditorScreen';
 import RecipeSelectScreen from '../screens/brewing/RecipeSelectScreen';
+import BeanSelectScreen from '../screens/brewing/BeanSelectScreen';
 import BrewingSessionScreen from '../screens/brewing/BrewingSessionScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import CommunityScreen from '../screens/community/CommunityScreen';
+import RecipeDetailScreen from '../screens/community/RecipeDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -64,9 +67,20 @@ function RecipeStack() {
 // Brewing Stack Navigator
 function BrewingStack() {
   return (
-    <Stack.Navigator screenOptions={headerOptions}>
-      <Stack.Screen name="BrewingSession" component={BrewingSessionScreen} options={{ title: '抽出' }} />
+    <Stack.Navigator screenOptions={headerOptions} initialRouteName="RecipeSelect">
       <Stack.Screen name="RecipeSelect" component={RecipeSelectScreen} options={{ title: 'レシピ選択' }} />
+      <Stack.Screen name="BeanSelect" component={BeanSelectScreen} options={{ title: '豆選択' }} />
+      <Stack.Screen name="BrewingSession" component={BrewingSessionScreen} options={{ title: '抽出' }} />
+    </Stack.Navigator>
+  );
+}
+
+// Community Stack Navigator
+function CommunityStack() {
+  return (
+    <Stack.Navigator screenOptions={headerOptions}>
+      <Stack.Screen name="CommunityList" component={CommunityScreen} options={{ title: 'コミュニティ' }} />
+      <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={{ title: 'レシピ詳細' }} />
     </Stack.Navigator>
   );
 }
@@ -85,6 +99,8 @@ function MainTabs() {
             iconName = focused ? 'leaf' : 'leaf-outline';
           } else if (route.name === 'Recipes') {
             iconName = focused ? 'document-text' : 'document-text-outline';
+          } else if (route.name === 'Community') {
+            iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Brewing') {
             iconName = focused ? 'cafe' : 'cafe-outline';
           } else if (route.name === 'Profile') {
@@ -110,6 +126,7 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: true, title: 'ホーム' }} />
       <Tab.Screen name="Beans" component={BeanStack} options={{ title: '豆' }} />
       <Tab.Screen name="Recipes" component={RecipeStack} options={{ title: 'レシピ' }} />
+      <Tab.Screen name="Community" component={CommunityStack} options={{ title: 'コミュニティ' }} />
       <Tab.Screen name="Brewing" component={BrewingStack} options={{ title: '抽出' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true, title: '設定' }} />
     </Tab.Navigator>
