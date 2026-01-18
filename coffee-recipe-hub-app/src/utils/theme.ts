@@ -67,10 +67,10 @@ export const Typography = {
     '5xl': 36,
   },
   fontWeights: {
-    normal: '400' as const,
-    medium: '500' as const,
-    semibold: '600' as const,
-    bold: '700' as const,
+    normal: '400' as '400',
+    medium: '500' as '500',
+    semibold: '600' as '600',
+    bold: '700' as '700',
   },
   lineHeights: {
     tight: 1.25,

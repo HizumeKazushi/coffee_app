@@ -2,46 +2,37 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useThemeStore } from '../store';
-import { Colors, Typography, Spacing, BorderRadius, LightTheme, DarkTheme } from '../utils/theme';
 
 export default function HomeScreen({ navigation }: any) {
-  const { isDarkMode } = useThemeStore();
-  const theme = isDarkMode ? DarkTheme : LightTheme;
-
   const quickActions = [
-    { title: '抽出を始める', icon: '☕', screen: 'BrewingTab' },
-    { title: '豆を追加', icon: '🫘', screen: 'BeansTab' },
-    { title: 'レシピ作成', icon: '📝', screen: 'RecipesTab' },
+    { title: '抽出を始める', icon: '☕', screen: 'Brewing' },
+    { title: '豆を追加', icon: '🫘', screen: 'Beans' },
+    { title: 'レシピ作成', icon: '📝', screen: 'Recipes' },
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={[styles.greeting, { color: theme.text }]}>こんにちは ☕</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>今日も美味しいコーヒーを</Text>
+        <Text style={styles.greeting}>こんにちは ☕</Text>
+        <Text style={styles.subtitle}>今日も美味しいコーヒーを</Text>
       </View>
 
       <View style={styles.quickActionsContainer}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>クイックアクション</Text>
+        <Text style={styles.sectionTitle}>クイックアクション</Text>
         <View style={styles.quickActions}>
           {quickActions.map((action, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.actionCard, { backgroundColor: theme.surface }]}
-              onPress={() => navigation.navigate(action.screen)}
-            >
+            <TouchableOpacity key={index} style={styles.actionCard} onPress={() => navigation.navigate(action.screen)}>
               <Text style={styles.actionIcon}>{action.icon}</Text>
-              <Text style={[styles.actionTitle, { color: theme.text }]}>{action.title}</Text>
+              <Text style={styles.actionTitle}>{action.title}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>最近の抽出</Text>
-        <View style={[styles.emptyState, { backgroundColor: theme.surface }]}>
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>まだ抽出記録がありません</Text>
+        <Text style={styles.sectionTitle}>最近の抽出</Text>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>まだ抽出記録がありません</Text>
         </View>
       </View>
     </ScrollView>
@@ -51,26 +42,30 @@ export default function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   header: {
-    padding: Spacing['2xl'],
-    paddingTop: Spacing['3xl'],
+    padding: 24,
+    paddingTop: 32,
   },
   greeting: {
-    fontSize: Typography.fontSizes['4xl'],
-    fontWeight: Typography.fontWeights.bold,
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#212121',
   },
   subtitle: {
-    fontSize: Typography.fontSizes.lg,
-    marginTop: Spacing.xs,
+    fontSize: 16,
+    marginTop: 4,
+    color: '#757575',
   },
   quickActionsContainer: {
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
-    fontSize: Typography.fontSizes.xl,
-    fontWeight: Typography.fontWeights.semibold,
-    marginBottom: Spacing.md,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#212121',
   },
   quickActions: {
     flexDirection: 'row',
@@ -79,29 +74,33 @@ const styles = StyleSheet.create({
   actionCard: {
     flex: 1,
     alignItems: 'center',
-    padding: Spacing.lg,
-    marginHorizontal: Spacing.xs,
-    borderRadius: BorderRadius.lg,
+    padding: 16,
+    marginHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: '#fafafa',
   },
   actionIcon: {
     fontSize: 32,
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
   actionTitle: {
-    fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.medium,
+    fontSize: 12,
+    fontWeight: '500',
     textAlign: 'center',
+    color: '#212121',
   },
   section: {
-    padding: Spacing.lg,
-    marginTop: Spacing.lg,
+    padding: 16,
+    marginTop: 16,
   },
   emptyState: {
-    padding: Spacing['2xl'],
-    borderRadius: BorderRadius.lg,
+    padding: 24,
+    borderRadius: 12,
     alignItems: 'center',
+    backgroundColor: '#fafafa',
   },
   emptyText: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: 14,
+    color: '#757575',
   },
 });

@@ -2,46 +2,26 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { useThemeStore, useBeanStore } from '../../store';
-import { Colors, Typography, Spacing, BorderRadius, LightTheme, DarkTheme } from '../../utils/theme';
-import { Bean, RoastLevel } from '../../types';
-
-const roastLevelLabels: Record<RoastLevel, string> = {
-  LIGHT: '浅煎り',
-  MEDIUM_LIGHT: '中浅煎り',
-  MEDIUM: '中煎り',
-  MEDIUM_DARK: '中深煎り',
-  DARK: '深煎り',
-};
+import { useBeanStore } from '../../store';
+import { Bean } from '../../types';
 
 export default function BeanListScreen({ navigation }: any) {
-  const { isDarkMode } = useThemeStore();
   const { beans } = useBeanStore();
-  const theme = isDarkMode ? DarkTheme : LightTheme;
 
   const renderBeanCard = ({ item }: { item: Bean }) => (
-    <TouchableOpacity
-      style={[styles.beanCard, { backgroundColor: theme.surface }]}
-      onPress={() => navigation.navigate('BeanDetail', { beanId: item.id })}
-    >
+    <TouchableOpacity style={styles.beanCard}>
       <View style={styles.beanHeader}>
-        <Text style={[styles.beanName, { color: theme.text }]}>{item.name}</Text>
-        <View style={[styles.stockBadge, { backgroundColor: item.stockGrams > 50 ? Colors.success : Colors.warning }]}>
+        <Text style={styles.beanName}>{item.name}</Text>
+        <View style={styles.stockBadge}>
           <Text style={styles.stockText}>{item.stockGrams}g</Text>
         </View>
       </View>
-      <Text style={[styles.roasterName, { color: theme.textSecondary }]}>{item.roasterName}</Text>
-      <View style={styles.beanMeta}>
-        <View style={[styles.roastBadge, { backgroundColor: Colors.roastLevel[item.roastLevel] }]}>
-          <Text style={styles.roastText}>{roastLevelLabels[item.roastLevel]}</Text>
-        </View>
-        <Text style={[styles.origin, { color: theme.textSecondary }]}>{item.origin}</Text>
-      </View>
+      <Text style={styles.roasterName}>{item.roasterName}</Text>
     </TouchableOpacity>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       <FlatList
         data={beans}
         renderItem={renderBeanCard}
@@ -50,24 +30,13 @@ export default function BeanListScreen({ navigation }: any) {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🫘</Text>
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>豆が登録されていません</Text>
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: theme.primary }]}
-              onPress={() => navigation.navigate('BeanAdd')}
-            >
+            <Text style={styles.emptyText}>豆が登録されていません</Text>
+            <TouchableOpacity style={styles.addButton}>
               <Text style={styles.addButtonText}>豆を追加</Text>
             </TouchableOpacity>
           </View>
         }
       />
-      {beans.length > 0 && (
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate('BeanAdd')}
-        >
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -75,14 +44,16 @@ export default function BeanListScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   listContent: {
-    padding: Spacing.lg,
+    padding: 16,
   },
   beanCard: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.md,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#fafafa',
   },
   beanHeader: {
     flexDirection: 'row',
@@ -90,83 +61,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   beanName: {
-    fontSize: Typography.fontSizes.xl,
-    fontWeight: Typography.fontWeights.semibold,
+    fontSize: 18,
+    fontWeight: '600',
     flex: 1,
+    color: '#212121',
   },
   stockBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: '#4caf50',
   },
   stockText: {
     color: '#fff',
-    fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.medium,
+    fontSize: 12,
+    fontWeight: '500',
   },
   roasterName: {
-    fontSize: Typography.fontSizes.md,
-    marginTop: Spacing.xs,
-  },
-  beanMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Spacing.md,
-  },
-  roastBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.sm,
-    marginRight: Spacing.sm,
-  },
-  roastText: {
-    color: '#fff',
-    fontSize: Typography.fontSizes.xs,
-    fontWeight: Typography.fontWeights.medium,
-  },
-  origin: {
-    fontSize: Typography.fontSizes.sm,
+    fontSize: 14,
+    marginTop: 4,
+    color: '#757575',
   },
   emptyState: {
     alignItems: 'center',
-    paddingTop: Spacing['5xl'],
+    paddingTop: 48,
   },
   emptyIcon: {
     fontSize: 64,
-    marginBottom: Spacing.lg,
+    marginBottom: 16,
   },
   emptyText: {
-    fontSize: Typography.fontSizes.lg,
-    marginBottom: Spacing.xl,
+    fontSize: 16,
+    marginBottom: 20,
+    color: '#757575',
   },
   addButton: {
-    paddingHorizontal: Spacing['2xl'],
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#977669',
   },
   addButtonText: {
     color: '#fff',
-    fontSize: Typography.fontSizes.lg,
-    fontWeight: Typography.fontWeights.semibold,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: Spacing.xl,
-    right: Spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  fabText: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: Typography.fontWeights.bold,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

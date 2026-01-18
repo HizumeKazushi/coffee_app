@@ -2,24 +2,19 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { useThemeStore } from '../../store';
-import { Typography, Spacing, BorderRadius, LightTheme, DarkTheme } from '../../utils/theme';
 
 export default function CommunityScreen() {
-  const { isDarkMode } = useThemeStore();
-  const theme = isDarkMode ? DarkTheme : LightTheme;
-
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>コミュニティ</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>みんなのレシピを見つけよう</Text>
+        <Text style={styles.title}>コミュニティ</Text>
+        <Text style={styles.subtitle}>みんなのレシピを見つけよう</Text>
       </View>
 
-      <View style={[styles.comingSoon, { backgroundColor: theme.surface }]}>
+      <View style={styles.comingSoon}>
         <Text style={styles.icon}>🌐</Text>
-        <Text style={[styles.comingSoonText, { color: theme.text }]}>Coming Soon</Text>
-        <Text style={[styles.description, { color: theme.textSecondary }]}>
+        <Text style={styles.comingSoonText}>Coming Soon</Text>
+        <Text style={styles.description}>
           コミュニティ機能は現在開発中です。{'\n'}
           レシピの共有やフォロー機能が追加される予定です。
         </Text>
@@ -31,36 +26,42 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   header: {
-    padding: Spacing['2xl'],
+    padding: 24,
   },
   title: {
-    fontSize: Typography.fontSizes['3xl'],
-    fontWeight: Typography.fontWeights.bold,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#212121',
   },
   subtitle: {
-    fontSize: Typography.fontSizes.md,
-    marginTop: Spacing.xs,
+    fontSize: 14,
+    marginTop: 4,
+    color: '#757575',
   },
   comingSoon: {
-    margin: Spacing.lg,
-    padding: Spacing['3xl'],
-    borderRadius: BorderRadius.xl,
+    margin: 16,
+    padding: 32,
+    borderRadius: 16,
     alignItems: 'center',
+    backgroundColor: '#fafafa',
   },
   icon: {
     fontSize: 64,
-    marginBottom: Spacing.lg,
+    marginBottom: 16,
   },
   comingSoonText: {
-    fontSize: Typography.fontSizes['2xl'],
-    fontWeight: Typography.fontWeights.bold,
-    marginBottom: Spacing.md,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 12,
+    color: '#212121',
   },
   description: {
-    fontSize: Typography.fontSizes.md,
+    fontSize: 14,
     textAlign: 'center',
     lineHeight: 22,
+    color: '#757575',
   },
 });
