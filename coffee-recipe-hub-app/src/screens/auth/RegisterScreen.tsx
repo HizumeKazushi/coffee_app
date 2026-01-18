@@ -41,7 +41,11 @@ export default function RegisterScreen({ navigation }: any) {
     setLoading(false);
 
     if (error) {
-      Alert.alert('登録エラー', error.message);
+      if (error.message.includes('rate limit') || error.status === 429) {
+        Alert.alert('エラー', '短時間に多くのリクエストがありました。1-2分後に再度お試しください。');
+      } else {
+        Alert.alert('登録エラー', error.message);
+      }
     } else {
       Alert.alert('登録完了', '確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。', [
         { text: 'OK', onPress: () => navigation.navigate('Login') },
