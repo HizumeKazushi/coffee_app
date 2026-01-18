@@ -20,7 +20,7 @@ import RecipeListScreen from '../screens/recipes/RecipeListScreen';
 import RecipeEditorScreen from '../screens/recipes/RecipeEditorScreen';
 import RecipeSelectScreen from '../screens/brewing/RecipeSelectScreen';
 import BrewingSessionScreen from '../screens/brewing/BrewingSessionScreen';
-import CommunityScreen from '../screens/community/CommunityScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -87,8 +87,8 @@ function MainTabs() {
             iconName = focused ? 'document-text' : 'document-text-outline';
           } else if (route.name === 'Brewing') {
             iconName = focused ? 'cafe' : 'cafe-outline';
-          } else if (route.name === 'Community') {
-            iconName = focused ? 'people' : 'people-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
           }
 
           return <Ionicons name={iconName} size={22} color={color} />;
@@ -111,7 +111,7 @@ function MainTabs() {
       <Tab.Screen name="Beans" component={BeanStack} options={{ title: '豆' }} />
       <Tab.Screen name="Recipes" component={RecipeStack} options={{ title: 'レシピ' }} />
       <Tab.Screen name="Brewing" component={BrewingStack} options={{ title: '抽出' }} />
-      <Tab.Screen name="Community" component={CommunityScreen} options={{ headerShown: true, title: 'コミュニティ' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true, title: '設定' }} />
     </Tab.Navigator>
   );
 }
