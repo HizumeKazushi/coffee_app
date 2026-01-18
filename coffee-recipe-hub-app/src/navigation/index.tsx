@@ -12,22 +12,23 @@ import BeanListScreen from '../screens/beans/BeanListScreen';
 import BeanAddScreen from '../screens/beans/BeanAddScreen';
 import RecipeListScreen from '../screens/recipes/RecipeListScreen';
 import RecipeEditorScreen from '../screens/recipes/RecipeEditorScreen';
+import RecipeSelectScreen from '../screens/brewing/RecipeSelectScreen';
 import BrewingSessionScreen from '../screens/brewing/BrewingSessionScreen';
 import CommunityScreen from '../screens/community/CommunityScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+const headerOptions = {
+  headerStyle: { backgroundColor: '#fff' },
+  headerShadowVisible: false,
+  headerTitleStyle: { fontWeight: '400' as const, fontSize: 16 },
+};
+
 // Bean Stack Navigator
 function BeanStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#fff' },
-        headerShadowVisible: false,
-        headerTitleStyle: { fontWeight: '400', fontSize: 16 },
-      }}
-    >
+    <Stack.Navigator screenOptions={headerOptions}>
       <Stack.Screen name="BeanList" component={BeanListScreen} options={{ title: '豆' }} />
       <Stack.Screen name="BeanAdd" component={BeanAddScreen} options={{ title: '豆を追加' }} />
     </Stack.Navigator>
@@ -37,15 +38,19 @@ function BeanStack() {
 // Recipe Stack Navigator
 function RecipeStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#fff' },
-        headerShadowVisible: false,
-        headerTitleStyle: { fontWeight: '400', fontSize: 16 },
-      }}
-    >
+    <Stack.Navigator screenOptions={headerOptions}>
       <Stack.Screen name="RecipeList" component={RecipeListScreen} options={{ title: 'レシピ' }} />
       <Stack.Screen name="RecipeEditor" component={RecipeEditorScreen} options={{ title: 'レシピ作成' }} />
+    </Stack.Navigator>
+  );
+}
+
+// Brewing Stack Navigator
+function BrewingStack() {
+  return (
+    <Stack.Navigator screenOptions={headerOptions}>
+      <Stack.Screen name="BrewingSession" component={BrewingSessionScreen} options={{ title: '抽出' }} />
+      <Stack.Screen name="RecipeSelect" component={RecipeSelectScreen} options={{ title: 'レシピ選択' }} />
     </Stack.Navigator>
   );
 }
@@ -90,7 +95,7 @@ export default function Navigation() {
         <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: true, title: 'ホーム' }} />
         <Tab.Screen name="Beans" component={BeanStack} options={{ title: '豆' }} />
         <Tab.Screen name="Recipes" component={RecipeStack} options={{ title: 'レシピ' }} />
-        <Tab.Screen name="Brewing" component={BrewingSessionScreen} options={{ headerShown: true, title: '抽出' }} />
+        <Tab.Screen name="Brewing" component={BrewingStack} options={{ title: '抽出' }} />
         <Tab.Screen
           name="Community"
           component={CommunityScreen}
