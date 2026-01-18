@@ -1,15 +1,34 @@
 // ホーム画面 - ミニマルデザイン
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../lib/supabase';
 
 export default function HomeScreen({ navigation }: any) {
+  const handleLogout = async () => {
+    Alert.alert('ログアウト', 'ログアウトしますか？', [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: 'ログアウト',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase.auth.signOut();
+        },
+      },
+    ]);
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Coffee Recipe Hub</Text>
-        <Text style={styles.subtitle}>今日も美味しいコーヒーを</Text>
+        <View>
+          <Text style={styles.title}>Coffee Recipe Hub</Text>
+          <Text style={styles.subtitle}>今日も美味しいコーヒーを</Text>
+        </View>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Ionicons name="log-out-outline" size={22} color="#999" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
@@ -56,9 +75,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     paddingHorizontal: 24,
     paddingTop: 40,
     paddingBottom: 32,
+  },
+  logoutButton: {
+    padding: 8,
   },
   title: {
     fontSize: 28,

@@ -1,12 +1,18 @@
-// ナビゲーション設定 - ミニマルデザイン
+// ナビゲーション設定 - 認証フロー対応
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
-// Screens
+// Auth Screens
+import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
+
+// Main Screens
 import HomeScreen from '../screens/HomeScreen';
 import BeanListScreen from '../screens/beans/BeanListScreen';
 import BeanAddScreen from '../screens/beans/BeanAddScreen';
@@ -24,6 +30,16 @@ const headerOptions = {
   headerShadowVisible: false,
   headerTitleStyle: { fontWeight: '400' as const, fontSize: 16 },
 };
+
+// Auth Stack
+function AuthStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+}
 
 // Bean Stack Navigator
 function BeanStack() {
@@ -56,52 +72,75 @@ function BrewingStack() {
 }
 
 // メインタブナビゲーター
-export default function Navigation() {
+function MainTabs() {
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color }) => {
-            let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color }) => {
+          let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
 
-            if (route.name === 'Home') {
-              iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'Beans') {
-              iconName = focused ? 'leaf' : 'leaf-outline';
-            } else if (route.name === 'Recipes') {
-              iconName = focused ? 'document-text' : 'document-text-outline';
-            } else if (route.name === 'Brewing') {
-              iconName = focused ? 'cafe' : 'cafe-outline';
-            } else if (route.name === 'Community') {
-              iconName = focused ? 'people' : 'people-outline';
-            }
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Beans') {
+            iconName = focused ? 'leaf' : 'leaf-outline';
+          } else if (route.name === 'Recipes') {
+            iconName = focused ? 'document-text' : 'document-text-outline';
+          } else if (route.name === 'Brewing') {
+            iconName = focused ? 'cafe' : 'cafe-outline';
+          } else if (route.name === 'Community') {
+            iconName = focused ? 'people' : 'people-outline';
+          }
 
-            return <Ionicons name={iconName} size={22} color={color} />;
-          },
-          tabBarActiveTintColor: '#1a1a1a',
-          tabBarInactiveTintColor: '#999',
-          tabBarStyle: {
-            backgroundColor: '#fff',
-            borderTopWidth: 0.5,
-            borderTopColor: '#eee',
-          },
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '400',
-          },
-          headerShown: false,
-        })}
-      >
-        <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: true, title: 'ホーム' }} />
-        <Tab.Screen name="Beans" component={BeanStack} options={{ title: '豆' }} />
-        <Tab.Screen name="Recipes" component={RecipeStack} options={{ title: 'レシピ' }} />
-        <Tab.Screen name="Brewing" component={BrewingStack} options={{ title: '抽出' }} />
-        <Tab.Screen
-          name="Community"
-          component={CommunityScreen}
-          options={{ headerShown: true, title: 'コミュニティ' }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+          return <Ionicons name={iconName} size={22} color={color} />;
+        },
+        tabBarActiveTintColor: '#1a1a1a',
+        tabBarInactiveTintColor: '#999',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 0.5,
+          borderTopColor: '#eee',
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '400',
+        },
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: true, title: 'ホーム' }} />
+      <Tab.Screen name="Beans" component={BeanStack} options={{ title: '豆' }} />
+      <Tab.Screen name="Recipes" component={RecipeStack} options={{ title: 'レシピ' }} />
+      <Tab.Screen name="Brewing" component={BrewingStack} options={{ title: '抽出' }} />
+      <Tab.Screen name="Community" component={CommunityScreen} options={{ headerShown: true, title: 'コミュニティ' }} />
+    </Tab.Navigator>
   );
+}
+
+// ルートナビゲーター
+export default function Navigation() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 現在のセッションを取得
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    // セッション変更を監視
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return null; // ローディング中は何も表示しない
+  }
+
+  return <NavigationContainer>{session ? <MainTabs /> : <AuthStack />}</NavigationContainer>;
 }
