@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store';
 
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -137,11 +138,22 @@ function MainTabs() {
 export default function Navigation() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
     // 現在のセッションを取得
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          displayName: session.user.user_metadata?.display_name || '',
+          createdAt: session.user.created_at,
+        });
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -150,10 +162,20 @@ export default function Navigation() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          displayName: session.user.user_metadata?.display_name || '',
+          createdAt: session.user.created_at,
+        });
+      } else {
+        setUser(null);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [setUser]);
 
   if (loading) {
     return null; // ローディング中は何も表示しない

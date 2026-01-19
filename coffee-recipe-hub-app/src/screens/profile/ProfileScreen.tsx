@@ -1,7 +1,7 @@
 // プロフィール・設定画面
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { User } from '@supabase/supabase-js';
@@ -42,54 +42,76 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
-  const handleChangePassword = () => {
-    Alert.prompt(
-      'パスワード変更',
-      '新しいパスワードを入力してください（6文字以上）',
-      async (newPassword) => {
-        if (!newPassword || newPassword.length < 6) {
-          Alert.alert('エラー', 'パスワードは6文字以上で入力してください');
-          return;
-        }
-
-        const { error } = await supabase.auth.updateUser({
-          password: newPassword,
-        });
-
-        if (error) {
-          Alert.alert('エラー', error.message);
-        } else {
-          Alert.alert('成功', 'パスワードを変更しました');
-        }
-      },
-      'secure-text',
-    );
+  const handleChangePassword = async () => {
+    if (Platform.OS === 'web') {
+      const newPassword = window.prompt('新しいパスワードを入力してください（6文字以上）');
+      if (!newPassword || newPassword.length < 6) {
+        alert('パスワードは6文字以上で入力してください');
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        alert(error.message);
+      } else {
+        alert('パスワードを変更しました');
+      }
+    } else {
+      Alert.prompt(
+        'パスワード変更',
+        '新しいパスワードを入力してください（6文字以上）',
+        async (newPassword) => {
+          if (!newPassword || newPassword.length < 6) {
+            Alert.alert('エラー', 'パスワードは6文字以上で入力してください');
+            return;
+          }
+          const { error } = await supabase.auth.updateUser({ password: newPassword });
+          if (error) {
+            Alert.alert('エラー', error.message);
+          } else {
+            Alert.alert('成功', 'パスワードを変更しました');
+          }
+        },
+        'secure-text',
+      );
+    }
   };
 
   const handleLogout = async () => {
-    Alert.alert('ログアウト', 'ログアウトしますか？', [
-      { text: 'キャンセル', style: 'cancel' },
-      {
-        text: 'ログアウト',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
+    if (Platform.OS === 'web') {
+      if (window.confirm('ログアウトしますか？')) {
+        await supabase.auth.signOut();
+      }
+    } else {
+      Alert.alert('ログアウト', 'ログアウトしますか？', [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'ログアウト',
+          style: 'destructive',
+          onPress: async () => {
+            await supabase.auth.signOut();
+          },
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert('アカウント削除', 'この操作は取り消せません。本当に削除しますか？', [
-      { text: 'キャンセル', style: 'cancel' },
-      {
-        text: '削除',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert('お知らせ', 'アカウント削除機能は現在開発中です');
+    if (Platform.OS === 'web') {
+      if (window.confirm('この操作は取り消せません。本当に削除しますか？')) {
+        alert('アカウント削除機能は現在開発中です');
+      }
+    } else {
+      Alert.alert('アカウント削除', 'この操作は取り消せません。本当に削除しますか？', [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('お知らせ', 'アカウント削除機能は現在開発中です');
+          },
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   return (

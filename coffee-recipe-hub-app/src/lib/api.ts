@@ -119,4 +119,32 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch brew logs');
     return res.json();
   },
+
+  // Likes
+  likeRecipe: async (recipeId: string) => {
+    const headers = await getAuthHeader();
+    const res = await fetch(`${API_URL}/recipes/${recipeId}/like`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) throw new Error('Failed to like recipe');
+    return res.json();
+  },
+
+  unlikeRecipe: async (recipeId: string) => {
+    const headers = await getAuthHeader();
+    const res = await fetch(`${API_URL}/recipes/${recipeId}/like`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) throw new Error('Failed to unlike recipe');
+    return res.json();
+  },
+
+  checkLikeStatus: async (recipeId: string) => {
+    const headers = await getAuthHeader();
+    const res = await fetch(`${API_URL}/recipes/${recipeId}/like`, { headers });
+    if (!res.ok) throw new Error('Failed to check like status');
+    return res.json();
+  },
 };

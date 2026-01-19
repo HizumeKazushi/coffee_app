@@ -549,3 +549,96 @@ func CreateBrewLog(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, log)
 }
+
+// ========== Like Handlers ==========
+
+// LikeRecipe レシピにいいね
+func LikeRecipe(c *gin.Context) {
+	userID := c.GetString("userID")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	recipeID := c.Param("id")
+
+	// いいね追加
+	_, err := database.DB.Exec(`
+		INSERT INTO recipe_likes (user_id, recipe_id)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id, recipe_id) DO NOTHING
+	`, userID, recipeID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// like_count を更新
+	_, err = database.DB.Exec(`
+		UPDATE recipes
+		SET like_count = (SELECT COUNT(*) FROM recipe_likes WHERE recipe_id = $1)
+		WHERE id = $1
+	`, recipeID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Liked"})
+}
+
+// UnlikeRecipe レシピのいいねを取り消し
+func UnlikeRecipe(c *gin.Context) {
+	userID := c.GetString("userID")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	recipeID := c.Param("id")
+
+	// いいね削除
+	_, err := database.DB.Exec(`
+		DELETE FROM recipe_likes
+		WHERE user_id = $1 AND recipe_id = $2
+	`, userID, recipeID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// like_count を更新
+	_, err = database.DB.Exec(`
+		UPDATE recipes
+		SET like_count = (SELECT COUNT(*) FROM recipe_likes WHERE recipe_id = $1)
+		WHERE id = $1
+	`, recipeID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Unliked"})
+}
+
+// CheckLikeStatus いいね状態を確認
+func CheckLikeStatus(c *gin.Context) {
+	userID := c.GetString("userID")
+	recipeID := c.Param("id")
+
+	var exists bool
+	err := database.DB.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM recipe_likes WHERE user_id = $1 AND recipe_id = $2)
+	`, userID, recipeID).Scan(&exists)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"liked": exists})
+}

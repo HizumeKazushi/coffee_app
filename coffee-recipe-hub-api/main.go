@@ -65,6 +65,10 @@ func main() {
 			recipes.POST("", handlers.CreateRecipe)
 			recipes.PUT("/:id", handlers.UpdateRecipe)
 			recipes.DELETE("/:id", handlers.DeleteRecipe)
+			// いいね機能
+			recipes.POST("/:id/like", handlers.LikeRecipe)
+			recipes.DELETE("/:id/like", handlers.UnlikeRecipe)
+			recipes.GET("/:id/like", handlers.CheckLikeStatus)
 		}
 
 		// BrewLogs

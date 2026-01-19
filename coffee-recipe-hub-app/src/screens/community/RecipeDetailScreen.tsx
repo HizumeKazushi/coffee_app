@@ -1,18 +1,63 @@
 // レシピ詳細画面 - コミュニティ用
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore, useAuthStore } from '../../store';
 import { Recipe } from '../../types';
+import { api } from '../../lib/api';
 
 export default function RecipeDetailScreen({ route, navigation }: any) {
   const recipe: Recipe = route.params?.recipe;
   const { addRecipe } = useRecipeStore();
   const { user } = useAuthStore();
   const [importing, setImporting] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(recipe?.likeCount || 0);
+  const [likeLoading, setLikeLoading] = useState(false);
 
   const isOwnRecipe = user?.id === recipe?.userId;
+
+  useEffect(() => {
+    if (recipe?.id && user) {
+      checkLikeStatus();
+    }
+  }, [recipe?.id, user]);
+
+  const checkLikeStatus = async () => {
+    try {
+      const result = await api.checkLikeStatus(recipe.id);
+      setLiked(result.liked);
+    } catch (e) {
+      console.error('Failed to check like status', e);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!user) {
+      const msg = 'いいねするにはログインが必要です';
+      if (Platform.OS === 'web') alert(msg);
+      else Alert.alert('お知らせ', msg);
+      return;
+    }
+
+    setLikeLoading(true);
+    try {
+      if (liked) {
+        await api.unlikeRecipe(recipe.id);
+        setLiked(false);
+        setLikeCount((prev) => Math.max(prev - 1, 0));
+      } else {
+        await api.likeRecipe(recipe.id);
+        setLiked(true);
+        setLikeCount((prev) => prev + 1);
+      }
+    } catch (e) {
+      console.error('Failed to toggle like', e);
+    } finally {
+      setLikeLoading(false);
+    }
+  };
 
   const handleImport = async () => {
     if (!recipe) return;
@@ -31,9 +76,15 @@ export default function RecipeDetailScreen({ route, navigation }: any) {
         isPublic: false,
       };
       await addRecipe(importedRecipe);
-      Alert.alert('成功', 'レシピをマイレシピに追加しました', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      if (Platform.OS === 'web') {
+        alert('レシピをマイレシピに追加しました');
+        navigation.goBack();
+      } else {
+        Alert.alert('成功', 'レシピをマイレシピに追加しました', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      }
     } catch (e) {
-      Alert.alert('エラー', 'レシピのインポートに失敗しました');
+      if (Platform.OS === 'web') alert('レシピのインポートに失敗しました');
+      else Alert.alert('エラー', 'レシピのインポートに失敗しました');
     } finally {
       setImporting(false);
     }
@@ -58,10 +109,20 @@ export default function RecipeDetailScreen({ route, navigation }: any) {
               <Ionicons name="person-circle-outline" size={16} color="#666" />
               <Text style={styles.authorName}>{isOwnRecipe ? 'あなた' : recipe.authorName || '匿名ユーザー'}</Text>
             </View>
-            <View style={styles.likeBadge}>
-              <Ionicons name="heart" size={14} color="#ff6b6b" />
-              <Text style={styles.likeCount}>{recipe.likeCount || 0}</Text>
-            </View>
+            <TouchableOpacity
+              style={[styles.likeBadge, liked && styles.likeBadgeActive]}
+              onPress={handleLike}
+              disabled={likeLoading}
+            >
+              {likeLoading ? (
+                <ActivityIndicator size="small" color={liked ? '#fff' : '#ff6b6b'} />
+              ) : (
+                <>
+                  <Ionicons name={liked ? 'heart' : 'heart-outline'} size={16} color={liked ? '#fff' : '#ff6b6b'} />
+                  <Text style={[styles.likeCount, liked && styles.likeCountActive]}>{likeCount}</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -207,6 +268,12 @@ const styles = StyleSheet.create({
   likeCount: {
     fontSize: 13,
     color: '#ff6b6b',
+  },
+  likeBadgeActive: {
+    backgroundColor: '#ff6b6b',
+  },
+  likeCountActive: {
+    color: '#fff',
   },
   tagsContainer: {
     flexDirection: 'row',

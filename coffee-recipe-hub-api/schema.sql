@@ -78,3 +78,22 @@ CREATE POLICY "Users can view own brew_logs" ON brew_logs FOR SELECT USING (auth
 CREATE POLICY "Users can insert own brew_logs" ON brew_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own brew_logs" ON brew_logs FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own brew_logs" ON brew_logs FOR DELETE USING (auth.uid() = user_id);
+
+-- いいねテーブル
+CREATE TABLE IF NOT EXISTS recipe_likes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, recipe_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_recipe_likes_user_id ON recipe_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_recipe_likes_recipe_id ON recipe_likes(recipe_id);
+
+ALTER TABLE recipe_likes ENABLE ROW LEVEL SECURITY;
+
+-- いいね: ユーザーは自分のいいねのみ管理可能、閲覧は全員可能
+CREATE POLICY "Users can view all likes" ON recipe_likes FOR SELECT USING (TRUE);
+CREATE POLICY "Users can insert own likes" ON recipe_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete own likes" ON recipe_likes FOR DELETE USING (auth.uid() = user_id);
