@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npx expo export:web",
+  "outputDirectory": "web-build",
+  "devCommand": "npx expo start --web",
+  "installCommand": "npm install",
+  "framework": null,
+  "env": {
+    "EXPO_PUBLIC_API_URL": "https://coffee-recipe-hub-api.onrender.com/api/v1"
+  }
+}

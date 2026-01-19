@@ -2,9 +2,8 @@
 
 import { supabase } from './supabase';
 
-// PCのIPアドレス（Expo Tunnelモードの場合はlocalhostでも動作する場合があるが、実機ではPCのIPが必要）
-// Expo Tunnelの場合は localhost でOK
-const API_URL = 'http://localhost:8080/api/v1';
+// 環境変数から API URL を取得（本番環境ではRenderのURL、開発環境ではlocalhost）
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 const getAuthHeader = async (): Promise<HeadersInit> => {
   const {
