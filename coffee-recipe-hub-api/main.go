@@ -93,6 +93,8 @@ func main() {
 
 // AuthMiddleware JWTトークンからユーザーIDを抽出するミドルウェア
 func AuthMiddleware() gin.HandlerFunc {
+	jwtSecret := os.Getenv("SUPABASE_JWT_SECRET")
+
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -108,12 +110,31 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenString := parts[1]
 
-		// 署名検証なしでトークンをパース（開発用、本番では検証推奨）
-		token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
-		if err != nil {
-			log.Printf("Failed to parse token: %v", err)
-			c.Next()
-			return
+		var token *jwt.Token
+		var err error
+
+		if jwtSecret != "" {
+			// 本番モード: JWT署名を検証
+			token, err = jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, jwt.ErrSignatureInvalid
+				}
+				return []byte(jwtSecret), nil
+			})
+			if err != nil {
+				log.Printf("Failed to verify token: %v", err)
+				c.Next()
+				return
+			}
+		} else {
+			// 開発モード: 署名検証なし（警告ログ）
+			log.Println("⚠️  WARNING: SUPABASE_JWT_SECRET not set, skipping signature verification")
+			token, _, err = new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
+			if err != nil {
+				log.Printf("Failed to parse token: %v", err)
+				c.Next()
+				return
+			}
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {

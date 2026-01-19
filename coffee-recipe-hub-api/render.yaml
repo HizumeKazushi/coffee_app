@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: coffee-recipe-hub-api
+    runtime: go
+    buildCommand: go build -o main .
+    startCommand: ./main
+    envVars:
+      - key: GIN_MODE
+        value: release
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
