@@ -15,6 +15,7 @@
     "@react-navigation/native-stack": "^7.10.0",
     "@supabase/supabase-js": "^2.90.1",
     "expo": "~54.0.31",
+    "expo-av": "^16.0.8",
     "expo-sqlite": "^16.0.10",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",

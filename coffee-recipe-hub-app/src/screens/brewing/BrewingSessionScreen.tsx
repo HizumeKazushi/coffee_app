@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Vibration } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useRecipeStore, useBrewLogStore, useBeanStore } from '../../store';
 
 export default function BrewingSessionScreen({ navigation }: any) {
@@ -16,8 +17,57 @@ export default function BrewingSessionScreen({ navigation }: any) {
   const [hasVibrated, setHasVibrated] = useState<number[]>([]);
   const [isFinishing, setIsFinishing] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const steps = selectedRecipe?.steps || [];
+
+  // サウンドの初期化
+  useEffect(() => {
+    let isMounted = true;
+
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+      } catch (error) {
+        console.log('Audio setup error:', error);
+      }
+    };
+
+    setupAudio();
+
+    return () => {
+      isMounted = false;
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  // アラート音を再生する関数
+  const playAlertSound = async () => {
+    try {
+      // 既存のサウンドをアンロード
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+
+      // アラート音を再生
+      const { sound } = await Audio.Sound.createAsync(require('../../../assets/sounds/alert.mp3'), {
+        shouldPlay: true,
+      });
+      soundRef.current = sound;
+
+      // バイブレーションも同時に実行
+      Vibration.vibrate([0, 200, 100, 200]);
+    } catch (error) {
+      console.log('Sound playback error:', error);
+      // フォールバック: バイブレーションのみ
+      Vibration.vibrate([0, 200, 100, 200]);
+    }
+  };
 
   useEffect(() => {
     if (isRunning) {
@@ -32,7 +82,7 @@ export default function BrewingSessionScreen({ navigation }: any) {
     };
   }, [isRunning]);
 
-  // ステップ更新とバイブレーション
+  // ステップ更新とバイブレーション・サウンド
   useEffect(() => {
     if (!selectedRecipe || steps.length === 0) return;
 
@@ -46,9 +96,9 @@ export default function BrewingSessionScreen({ navigation }: any) {
       if (currentSeconds >= step.timeSeconds && (!nextStep || currentSeconds < nextStep.timeSeconds)) {
         if (currentStepIndex !== i) {
           setCurrentStepIndex(i);
-          // 新しいステップに入ったらバイブレーション
+          // 新しいステップに入ったらバイブレーションとサウンド
           if (!hasVibrated.includes(i) && i > 0) {
-            Vibration.vibrate(200);
+            playAlertSound();
             setHasVibrated((prev) => [...prev, i]);
           }
         }
